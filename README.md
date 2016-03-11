@@ -12,7 +12,7 @@ $ houseman start
 ### Run one-off command
 
 ```
-$ houseman run your_command
+$ houseman run --command your_command
 ```
 
 See other options by
