@@ -9,6 +9,7 @@ import           Control.Concurrent.Chan
 import           Control.Monad
 import           Data.List
 import           Data.Monoid
+import           Data.Maybe
 import           Data.Text             (Text)
 import           Data.Time
 import           GHC.IO.Handle
@@ -46,11 +47,12 @@ start procs = do
     phs <- zipWithM Houseman.runProcess procs (repeat log)
     m <- newEmptyMVar
 
-    installHandler keyboardSignal (Catch (handler m phs)) Nothing
+    installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
 
     _ <- forkIO $ forever $ do
+      b <- any isJust <$> mapM getProcessExitCode phs
+      when b $ terminateAll m phs
       threadDelay 1000
-      terminateWithExit m phs
 
     _ <- forkIO $ outputLog log
 
@@ -58,25 +60,17 @@ start procs = do
     putStrLn "bye"
     exitWith exitStatus
   where
-    handler :: MVar ExitCode -> [ProcessHandle] -> IO ()
-    handler m phs = do
+    terminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
+    terminateAll m phs = do
       forM_ phs terminateAndWaitForProcess
       putMVar m (ExitFailure 1)
-    failed :: Maybe ExitCode -> Bool
-    failed (Just (ExitFailure _)) = True
-    failed _                      = False
     terminateAndWaitForProcess :: ProcessHandle -> IO ()
-    terminateAndWaitForProcess ph = terminateProcess ph >> waitForProcess ph >> return ()
-    terminateWithExit :: MVar ExitCode -> [ProcessHandle] -> IO ()
-    terminateWithExit m phs = do
-      b <- any failed <$> mapM getProcessExitCode phs
-      when b $ do
-        -- TODO Maybe we don't have to try to terminate process which already
-        -- returned exit code.
-        -- TODO I'm not totally sure SIGTERM is best here, but there seems
-        -- to be no way to send signal other than it.
-        forM_ phs terminateAndWaitForProcess
-        putMVar m (ExitFailure 1)
+    terminateAndWaitForProcess ph = do
+      b <- getProcessExitCode ph
+      when (isNothing b) $ do
+        terminateProcess ph
+        waitForProcess ph
+        return ()
     outputLog :: Chan Log -> IO ()
     outputLog log = forever $ go []
       where
