@@ -1,2 +1,5 @@
-loop: top
-echo: ./echo.sh
+log1: tail -f /var/log/system.log
+log2: tail -f /var/log/system.log
+log3: tail -f /var/log/system.log
+log4: tail -f /var/log/system.log
+log5: tail -f /var/log/system.log
