@@ -26,7 +26,7 @@ import qualified System.Posix.Terminal as Terminal
 
 import           Procfile.Types
 
-type Log = Chan (String, Text)
+type Log = (String, Text)
 
 run :: String -> Procfile -> IO ()
 run cmd' procs = case find (\Proc{cmd} -> cmd == cmd') procs of
@@ -45,9 +45,32 @@ start procs = do
     log <- newChan
     phs <- zipWithM Houseman.runProcess procs (repeat log)
     m <- newEmptyMVar
+
     installHandler keyboardSignal (Catch (handler m phs)) Nothing
-    forkIO $ forever $ do
+
+    _ <- forkIO $ forever $ do
       threadDelay 1000
+      terminateWithExit m phs
+
+    _ <- forkIO $ forever $ do
+      threadDelay 1000
+      outputLog log
+
+    exitStatus <- takeMVar m
+    putStrLn "bye"
+    exitWith exitStatus
+  where
+    handler :: MVar ExitCode -> [ProcessHandle] -> IO ()
+    handler m phs = do
+      forM_ phs terminateAndWaitForProcess
+      putMVar m (ExitFailure 1)
+    failed :: Maybe ExitCode -> Bool
+    failed (Just (ExitFailure _)) = True
+    failed _                      = False
+    terminateAndWaitForProcess :: ProcessHandle -> IO ()
+    terminateAndWaitForProcess ph = terminateProcess ph >> waitForProcess ph >> return ()
+    terminateWithExit :: MVar ExitCode -> [ProcessHandle] -> IO ()
+    terminateWithExit m phs = do
       b <- any failed <$> mapM getProcessExitCode phs
       when b $ do
         -- TODO Maybe we don't have to try to terminate process which already
@@ -56,26 +79,13 @@ start procs = do
         -- to be no way to send signal other than it.
         forM_ phs terminateAndWaitForProcess
         putMVar m (ExitFailure 1)
-    forkIO $ forever $ do
+    outputLog :: Chan Log -> IO ()
+    outputLog log = do
       (name,l) <- readChan log
       t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
       Text.putStrLn (t <> " " <> Text.pack name <> ": " <> l )
-      threadDelay 1000
-    exitStatus <- takeMVar m
-    putStrLn "bye"
-    exitWith exitStatus
-  where
-    handler :: MVar ExitCode -> [ProcessHandle] -> IO ()
-    handler m phs = do
-      forM_ phs terminateAndWaitForProcess
-      void $ putMVar m (ExitFailure 1)
-    failed :: Maybe ExitCode -> Bool
-    failed (Just (ExitFailure _)) = True
-    failed _                      = False
-    terminateAndWaitForProcess :: ProcessHandle -> IO ()
-    terminateAndWaitForProcess ph = terminateProcess ph >> waitForProcess ph >> return ()
 
-runProcess :: Proc -> Log -> IO ProcessHandle
+runProcess :: Proc -> Chan Log -> IO ProcessHandle
 runProcess Proc {name,cmd,args,envs} log =  do
     currentEnvs <- getEnvironment
     (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just (envs ++ currentEnvs) }
