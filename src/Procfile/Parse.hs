@@ -22,7 +22,7 @@ proc = do
     return $ Proc n c a (envs <> envs' <> envs'')
 
 name :: Parser String
-name = some (letter <|> char '_') <* char ':'
+name = some (alphaNum <|> char '_') <* char ':'
   <?> "name"
 
 cmd :: Parser String

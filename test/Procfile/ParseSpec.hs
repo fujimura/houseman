@@ -30,7 +30,7 @@ instance Arbitrary Env where
 
 instance Arbitrary Proc where
    arbitrary = do
-     n <- listOf1 $ elements ('_':['a'..'z'])
+     n <- listOf1 $ elements (['A'..'Z'] ++ ['0'..'9'])
      c <- genValue
      a <- listOf genValue
      e <- listOf arbitrary
