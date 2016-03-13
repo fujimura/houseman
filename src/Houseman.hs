@@ -52,9 +52,7 @@ start procs = do
       threadDelay 1000
       terminateWithExit m phs
 
-    _ <- forkIO $ forever $ do
-      threadDelay 1000
-      outputLog log
+    _ <- forkIO $ outputLog log
 
     exitStatus <- takeMVar m
     putStrLn "bye"
@@ -80,10 +78,20 @@ start procs = do
         forM_ phs terminateAndWaitForProcess
         putMVar m (ExitFailure 1)
     outputLog :: Chan Log -> IO ()
-    outputLog log = do
-      (name,l) <- readChan log
-      t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
-      Text.putStrLn (t <> " " <> Text.pack name <> ": " <> l )
+    outputLog log = forever $ go []
+      where
+        go cs = do
+          (name,l) <- readChan log
+          let (color, cs') = name `lookupOrInsertNewColor` cs
+          t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
+          Text.putStrLn (colorString color (t <> " " <> Text.pack name <> ": ") <> l )
+          threadDelay 1000
+          go cs'
+        lookupOrInsertNewColor :: String -> [(String, Color)] -> (Color, [(String, Color)])
+        lookupOrInsertNewColor x xs = case x `lookup` xs of
+                                          Just color -> (color,xs)
+                                          Nothing -> let color = colors !! length xs
+                                                         in (color,(x,color):xs)
 
 runProcess :: Proc -> Chan Log -> IO ProcessHandle
 runProcess Proc {name,cmd,args,envs} log =  do
