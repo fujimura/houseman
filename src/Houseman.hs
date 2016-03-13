@@ -43,6 +43,7 @@ start procs = do
     m <- newEmptyMVar
     installHandler keyboardSignal (Catch (handler m phs)) Nothing
     forkIO $ forever $ do
+      threadDelay 1000
       b <- any failed <$> mapM getProcessExitCode phs
       when b $ do
         -- TODO Maybe we don't have to try to terminate process which already
@@ -78,6 +79,7 @@ runProcess Proc {name,cmd,args,envs} color =  do
         Text.hGetLine read >>= \l -> do
           t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
           Text.putStrLn (colorString color (t <> " " <> Text.pack name <> ": ") <> l )
+        threadDelay 1000
         readLoop read
 
 fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
