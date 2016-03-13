@@ -5,6 +5,7 @@
 module Houseman where
 
 import           Control.Concurrent
+import           Control.Concurrent.Chan
 import           Control.Monad
 import           Data.List
 import           Data.Monoid
@@ -25,6 +26,8 @@ import qualified System.Posix.Terminal as Terminal
 
 import           Procfile.Types
 
+type Log = Chan (String, Text)
+
 run :: String -> Procfile -> IO ()
 run cmd' procs = case find (\Proc{cmd} -> cmd == cmd') procs of
                   Just proc -> Houseman.start [proc] -- TODO Remove color in run command
@@ -39,7 +42,8 @@ colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 start :: [Proc] -> IO ()
 start procs = do
     print procs
-    phs <- zipWithM Houseman.runProcess procs colors
+    log <- newChan
+    phs <- zipWithM Houseman.runProcess procs (repeat log)
     m <- newEmptyMVar
     installHandler keyboardSignal (Catch (handler m phs)) Nothing
     forkIO $ forever $ do
@@ -52,6 +56,11 @@ start procs = do
         -- to be no way to send signal other than it.
         forM_ phs terminateAndWaitForProcess
         putMVar m (ExitFailure 1)
+    forkIO $ forever $ do
+      (name,l) <- readChan log
+      t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
+      Text.putStrLn (t <> " " <> Text.pack name <> ": " <> l )
+      threadDelay 1000
     exitStatus <- takeMVar m
     putStrLn "bye"
     exitWith exitStatus
@@ -66,21 +75,18 @@ start procs = do
     terminateAndWaitForProcess :: ProcessHandle -> IO ()
     terminateAndWaitForProcess ph = terminateProcess ph >> waitForProcess ph >> return ()
 
-runProcess :: Proc -> Color -> IO ProcessHandle
-runProcess Proc {name,cmd,args,envs} color =  do
+runProcess :: Proc -> Log -> IO ProcessHandle
+runProcess Proc {name,cmd,args,envs} log =  do
     currentEnvs <- getEnvironment
     (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just (envs ++ currentEnvs) }
     forkIO $ readLoop master
     return ph
   where
-    readLoop read = do
+    readLoop read = forever $ do
       c <- (||) <$> hIsClosed read <*> hIsEOF read
       unless c $ do
-        Text.hGetLine read >>= \l -> do
-          t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
-          Text.putStrLn (colorString color (t <> " " <> Text.pack name <> ": ") <> l )
+        Text.hGetLine read >>= \l -> writeChan log (name,l)
         threadDelay 1000
-        readLoop read
 
 fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
 fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
