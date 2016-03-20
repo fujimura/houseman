@@ -1,7 +1,7 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Procfile.ParseSpec ( main, spec ) where
 
@@ -9,52 +9,37 @@ import           Data.ByteString      (ByteString)
 import           Text.Trifecta.Parser
 import           Text.Trifecta.Result
 
+import           Data.List
 import qualified Procfile.Parse       as Parse
 import           Procfile.Types
-import Data.List
 
 import           Test.Hspec
-import           Test.QuickCheck hiding (Success, Result, Failure)
+import           Test.QuickCheck      hiding (Failure, Result, Success)
 
 genValue :: Gen String
 genValue = listOf1 $ elements (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "_/")
 
-newtype Line = Line String deriving (Eq,Show,Ord)
 newtype RawProcfile = RawProcfile String deriving (Eq,Show,Ord)
 
-instance Arbitrary Env where
-    arbitrary = do
-      k <- listOf1 $ elements ['A'..'Z']
-      v <- genValue
-      return (k,v)
+genEnvKey :: Gen String
+genEnvKey = listOf1 $ elements ['A'..'Z']
 
-instance Arbitrary Proc where
-   arbitrary = do
-     n <- listOf1 $ elements (['A'..'Z'] ++ ['0'..'9'])
-     c <- genValue
-     a <- listOf genValue
-     e <- listOf arbitrary
-     return (Proc (n ++ ":") c a e)
+genProcName :: Gen String
+genProcName = listOf1 $ elements (['A'..'Z'] ++ ['0'..'9'])
 
-instance Arbitrary Line where
-  arbitrary = do
-      (Proc n c a e) <- arbitrary
-      (Proc _ _ _ e') <- arbitrary
-      return $ Line . mconcat . intersperse " " $ [ n
-                                                  , envsToLineElement e
-                                                  , c
-                                                  , argsToLineElement a
-                                                  , envsToLineElement e'
-                                                  ]
-    where
-      envsToLineElement = mconcat . intersperse " " . map (\x -> mconcat [fst x, "=", snd x])
-      argsToLineElement = mconcat . intersperse " "
+genRawProcfileLine :: Gen String
+genRawProcfileLine = do
+      n <- (++ ":") <$> genProcName
+      c <- genValue
+      a <- mconcat . intersperse " " <$> listOf genValue
+      e <- mconcat <$> sequence [genEnvKey, return "=", genValue]
+      e' <- mconcat <$> sequence [genEnvKey, return "=", genValue]
+      return $ mconcat . intersperse " " $ [n, e, c, a, e']
 
 instance Arbitrary RawProcfile where
   arbitrary = do
     n <- choose (1,10)
-    (lines' :: [Line]) <- vectorOf n arbitrary
-    return $ RawProcfile . mconcat . intersperse "\n" . map (\(Line l) -> l) $ lines'
+    RawProcfile . mconcat . intersperse "\n" <$> vectorOf n genRawProcfileLine
 
 parse :: Parser a -> ByteString -> a
 parse p bs = case parseByteString p mempty bs of
@@ -77,7 +62,7 @@ main = hspec spec
 spec :: Spec
 spec = describe "Procfile.Parse" $ do
     describe "procfile" $ do
-      it "should parse well" $ property $ \((RawProcfile r)) ->
+      it "should parse well" $ property $ \(RawProcfile r) ->
         Parse.procfile `shouldParse` r
 
       it "should parse web: foo\\nworker: bar" $ do
