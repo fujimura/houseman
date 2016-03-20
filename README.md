@@ -1,5 +1,7 @@
 # houseman[![Circle CI](https://circleci.com/gh/fujimura/houseman.svg?style=shield)](https://circleci.com/gh/fujimura/houseman)
 
+[![Join the chat at https://gitter.im/fujimura/houseman](https://badges.gitter.im/fujimura/houseman.svg)](https://gitter.im/fujimura/houseman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 A Haskell implementation of [Foreman](https://github.com/ddollar/foreman)
 
 ## Usage
