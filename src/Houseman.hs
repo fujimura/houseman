@@ -37,8 +37,9 @@ start apps = do
       -- Get a MVar for exit code
       m <- newEmptyMVar
 
-      -- Kill apps with keyboard signal
-      _ <- installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
+      -- Kill apps with signals
+      [sigINT, sigTERM, sigKILL, keyboardSignal] `forM_` \signal ->
+        installHandler signal (Catch (terminateAll m phs)) Nothing
 
       -- If an app was terminated, terminate others as well
       _ <- forkIO $ watchTerminationOfProcesses (terminateAll m phs) phs
