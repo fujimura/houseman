@@ -45,20 +45,29 @@ start :: [Proc] -> IO ()
 start procs = do
     print procs
     log <- newChan
-    phs <- zipWithM Houseman.runProcess procs (repeat log)
+    withProcesses log procs $ \phs -> do
+      m <- newEmptyMVar
 
-    m <- newEmptyMVar
+      installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
 
-    installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
+      _ <- forkIO $ waitForProcessesAndTerminateAll m phs
+      _ <- forkIO $ outputLog log
 
-    _ <- forkIO $ waitForProcessesAndTerminateAll m phs
-    _ <- forkIO $ outputLog log
-
-    exitStatus <- takeMVar m
-    putStrLn "bye"
-    exitWith exitStatus
+      exitStatus <- takeMVar m
+      putStrLn "bye"
+      exitWith exitStatus
 
   where
+    withProcesses :: Chan Log -> [Proc] -> ([ProcessHandle] -> IO ()) -> IO ()
+    withProcesses log procs action = do
+        phs <- foldM go [] procs
+        action phs
+      where
+        go :: [ProcessHandle] -> Proc -> IO [ProcessHandle]
+        go phs p = bracket (Houseman.runProcess p log)
+                           terminateAndWaitForProcess
+                           (\ph -> return (phs ++ [ph]))
+
     waitForProcessesAndTerminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
     waitForProcessesAndTerminateAll m phs = go
       where
