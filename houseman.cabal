@@ -36,6 +36,7 @@ library
     , directory
   exposed-modules:
       Houseman
+      Houseman.Logger
       Procfile.Parse
       Procfile.Types
   default-language: Haskell2010
@@ -89,6 +90,7 @@ test-suite spec
       HousemanSpec
       Procfile.ParseSpec
       Houseman
+      Houseman.Logger
       Procfile.Parse
       Procfile.Types
   default-language: Haskell2010
