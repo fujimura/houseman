@@ -7,6 +7,7 @@ module Houseman where
 import           Control.Concurrent
 import           Control.Concurrent.Chan
 import           Control.Monad
+import Control.Exception
 import           Data.List
 import           Data.Monoid
 import           Data.Maybe
@@ -45,25 +46,33 @@ start procs = do
     print procs
     log <- newChan
     phs <- zipWithM Houseman.runProcess procs (repeat log)
+
     m <- newEmptyMVar
 
     installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
 
-    _ <- forkIO $ forever $ do
-      b <- any isJust <$> mapM getProcessExitCode phs
-      when b $ terminateAll m phs
-      threadDelay 1000
-
+    _ <- forkIO $ waitForProcessesAndTerminateAll m phs
     _ <- forkIO $ outputLog log
 
     exitStatus <- takeMVar m
     putStrLn "bye"
     exitWith exitStatus
+
   where
+    waitForProcessesAndTerminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
+    waitForProcessesAndTerminateAll m phs = go
+      where
+        go = do
+          b <- any isJust <$> mapM getProcessExitCode phs
+          when b $ terminateAll m phs
+          threadDelay 1000
+          go
+
     terminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
     terminateAll m phs = do
       forM_ phs terminateAndWaitForProcess
       putMVar m (ExitFailure 1)
+
     terminateAndWaitForProcess :: ProcessHandle -> IO ()
     terminateAndWaitForProcess ph = do
       b <- getProcessExitCode ph
@@ -71,8 +80,9 @@ start procs = do
         terminateProcess ph
         waitForProcess ph
         return ()
+
     outputLog :: Chan Log -> IO ()
-    outputLog log = forever $ go []
+    outputLog log = go []
       where
         go cs = do
           (name,l) <- readChan log
@@ -94,11 +104,12 @@ runProcess Proc {name,cmd,args,envs} log =  do
     forkIO $ readLoop master
     return ph
   where
-    readLoop read = forever $ do
+    readLoop read = do
       c <- (||) <$> hIsClosed read <*> hIsEOF read
       unless c $ do
         Text.hGetLine read >>= \l -> writeChan log (name,l)
         threadDelay 1000
+        readLoop read
 
 fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
 fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
