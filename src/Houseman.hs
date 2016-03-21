@@ -52,9 +52,10 @@ start apps = do
       where
         go = do
           b <- any isJust <$> mapM getProcessExitCode phs
-          when b $ terminateAll m phs
-          threadDelay 1000
-          go
+          if b then do
+            terminateAll m phs
+            threadDelay 1000
+               else go
 
     terminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
     terminateAll m phs = do
