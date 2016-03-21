@@ -16,7 +16,7 @@ import qualified Configuration.Dotenv as Dotenv
 
 import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
                                        terminateAll, terminateAndWaitForProcess,
-                                       waitForProcessesAndTerminateAll)
+                                       watchTerminationOfProcesses)
 import           Houseman.Logger      (newLogger, outputLog, runLogger)
 import           Procfile.Types
 
@@ -34,7 +34,8 @@ start apps = do
 
       _ <- installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
 
-      _ <- forkIO $ waitForProcessesAndTerminateAll m phs
+      -- If an app was terminated, terminate others as well
+      _ <- forkIO $ watchTerminationOfProcesses (terminateAll m phs) phs
       _ <- forkIO $ outputLog logger
 
       exitStatus <- takeMVar m

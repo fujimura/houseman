@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Houseman.Internal
-  ( waitForProcessesAndTerminateAll
+  ( watchTerminationOfProcesses
   , terminateAll
   , terminateAndWaitForProcess
   , fdsToHandles
@@ -24,15 +24,15 @@ import           System.Process
 import qualified System.Posix.IO       as IO
 import qualified System.Posix.Terminal as Terminal
 
-waitForProcessesAndTerminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
-waitForProcessesAndTerminateAll m phs = go
+watchTerminationOfProcesses :: IO a -> [ProcessHandle] -> IO ()
+watchTerminationOfProcesses handler phs = go
   where
     go = do
       b <- any isJust <$> mapM getProcessExitCode phs
-      if b then do
-        terminateAll m phs
-        threadDelay 1000
-           else go
+      if b then void handler
+           else do
+             threadDelay 1000
+             go
 
 terminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
 terminateAll m phs = do
