@@ -39,13 +39,14 @@ terminateAll m phs = do
   forM_ phs terminateAndWaitForProcess
   putMVar m (ExitFailure 1)
 
-terminateAndWaitForProcess :: ProcessHandle -> IO ()
+terminateAndWaitForProcess :: ProcessHandle -> IO ExitCode
 terminateAndWaitForProcess ph = do
   b <- getProcessExitCode ph
-  when (isNothing b) $ do
-    terminateProcess ph
-    waitForProcess ph
-    return ()
+  case b of
+    Just exitcode -> return exitcode
+    Nothing -> do
+      terminateProcess ph
+      waitForProcess ph
 
 fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
 fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
@@ -53,15 +54,15 @@ fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
 runInPseudoTerminal :: CreateProcess -> IO (Handle, Handle, ProcessHandle)
 runInPseudoTerminal p = do
     -- TODO handle leaks possibility
-    (read,write) <- fdsToHandles =<< IO.createPipe
+    (read',write) <- fdsToHandles =<< IO.createPipe
     (master,slave) <- fdsToHandles =<< Terminal.openPseudoTerminal
     encoding <- mkTextEncoding "utf8"
-    forM_ [read,write,master,slave,stdout] $ \handle -> do
-      hSetBuffering handle NoBuffering
-      hSetEncoding handle encoding
+    forM_ [read',write,master,slave,stdout] $ \h -> do
+      hSetBuffering h NoBuffering
+      hSetEncoding h encoding
     hSetNewlineMode master universalNewlineMode
     (_, _, _, ph) <-
-        createProcess p { std_in = UseHandle read
+        createProcess p { std_in = UseHandle read'
                         , std_out = UseHandle slave
                         , std_err = UseHandle slave
                         }

@@ -22,17 +22,17 @@ import           Procfile.Types
 
 run :: String -> Procfile -> IO ()
 run cmd' apps = case find (\App{cmd} -> cmd == cmd') apps of
-                  Just proc -> Houseman.start [proc] -- TODO Remove color in run command
+                  Just app -> Houseman.start [app] -- TODO Remove color in run command
                   Nothing   -> die ("Command '" ++ cmd' ++ "' not found in Procfile")
 
 start :: [App] -> IO ()
 start apps = do
     print apps
     logger <- newLogger
-    bracketMany (map (flip runApp logger) apps) terminateAndWaitForProcess $ \phs -> do
+    bracketMany (map (`runApp` logger) apps) terminateAndWaitForProcess $ \phs -> do
       m <- newEmptyMVar
 
-      installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
+      _ <- installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
 
       _ <- forkIO $ waitForProcessesAndTerminateAll m phs
       _ <- forkIO $ outputLog logger
@@ -48,5 +48,5 @@ runApp App {name,cmd,args,envs} logger =  do
     d <- doesFileExist ".env"
     dotEnvs <- if d then Dotenv.parseFile ".env" else return []
     (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just (nub $ envs ++ dotEnvs ++ currentEnvs)}
-    forkIO $ runLogger name logger master
+    _ <- forkIO $ runLogger name logger master
     return ph

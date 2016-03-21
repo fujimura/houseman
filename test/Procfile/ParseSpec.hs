@@ -65,9 +65,9 @@ spec = describe "Procfile.Parse" $ do
       it "should parse well" $ property $ \(RawProcfile r) ->
         Parse.procfile `shouldParse` r
 
-      it "should parse web: foo\\nworker: bar" $ do
-        let expected = [ App "web" "foo" [] [], App "worker" "bar" [] []]
-        parse Parse.procfile "web: foo\nworker: bar" `shouldBe` expected
+      it "should parse web: foo\\nworker: bar" $
+        parse Parse.procfile "web: foo\nworker: bar" `shouldBe`
+          [ App "web" "foo" [] [], App "worker" "bar" [] []]
 
     describe "proc" $ do
       it "should parse web: some/application run" $
