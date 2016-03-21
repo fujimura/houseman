@@ -13,11 +13,13 @@ import           Data.Maybe
 import           Data.Monoid
 import           Data.Text               (Text)
 import           Data.Time
+import           GHC.IO.Exception
 import           GHC.IO.Handle
 import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.IO
+import           System.IO.Error
 import           System.Posix.Signals
 import           System.Posix.Types
 import           System.Process
@@ -117,11 +119,12 @@ runProcess Proc {name,cmd,args,envs} log =  do
     return ph
   where
     readLoop read = do
-      c <- (||) <$> hIsClosed read <*> hIsEOF read
+      c <- (||) <$> hIsClosed read <*> hIsEOF' read
       unless c $ do
         Text.hGetLine read >>= \l -> writeChan log (name,l)
         threadDelay 1000
         readLoop read
+    hIsEOF' h = hIsEOF h `catchIOError` (\e -> if ioeGetErrorType e == HardwareFault then return True else ioError e)
 
 fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
 fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
