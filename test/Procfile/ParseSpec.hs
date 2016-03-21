@@ -66,34 +66,34 @@ spec = describe "Procfile.Parse" $ do
         Parse.procfile `shouldParse` r
 
       it "should parse web: foo\\nworker: bar" $ do
-        let expected = [ Proc "web" "foo" [] [], Proc "worker" "bar" [] []]
+        let expected = [ App "web" "foo" [] [], App "worker" "bar" [] []]
         parse Parse.procfile "web: foo\nworker: bar" `shouldBe` expected
 
     describe "proc" $ do
       it "should parse web: some/application run" $
-        parse Parse.proc "web: some/application run" `shouldBe` Proc { name = "web"
-                                                                     , cmd = "some/application"
-                                                                     , args = ["run"]
-                                                                     , envs = []
-                                                                     }
+        parse Parse.proc "web: some/application run" `shouldBe` App { name = "web"
+                                                                    , cmd = "some/application"
+                                                                    , args = ["run"]
+                                                                    , envs = []
+                                                                    }
       it "should parse web: some/application run FOO=1" $
-        parse Parse.proc "web: some/application run foo BAR=1" `shouldBe` Proc { name = "web"
-                                                                           , cmd = "some/application"
-                                                                           , args = ["run", "foo"]
-                                                                           , envs = [("BAR", "1")]
-                                                                           }
+        parse Parse.proc "web: some/application run foo BAR=1" `shouldBe` App { name = "web"
+                                                                              , cmd = "some/application"
+                                                                              , args = ["run", "foo"]
+                                                                              , envs = [("BAR", "1")]
+                                                                              }
       it "should parse web: FOO=1 some/application run" $
-        parse Parse.proc "web: FOO=1 some/application run" `shouldBe` Proc { name = "web"
-                                                                           , cmd = "some/application"
-                                                                           , args = ["run"]
-                                                                           , envs = [("FOO", "1")]
-                                                                           }
+        parse Parse.proc "web: FOO=1 some/application run" `shouldBe` App { name = "web"
+                                                                          , cmd = "some/application"
+                                                                          , args = ["run"]
+                                                                          , envs = [("FOO", "1")]
+                                                                          }
       it "should parse web: FOO=1 some/application run BAR=1" $
-        parse Parse.proc "web: FOO=1 some/application run BAR=2" `shouldBe` Proc { name = "web"
-                                                                           , cmd = "some/application"
-                                                                           , args = ["run"]
-                                                                           , envs = [("FOO", "1"), ("BAR", "2")]
-                                                                           }
+        parse Parse.proc "web: FOO=1 some/application run BAR=2" `shouldBe` App { name = "web"
+                                                                                , cmd = "some/application"
+                                                                                , args = ["run"]
+                                                                                , envs = [("FOO", "1"), ("BAR", "2")]
+                                                                                }
 
     describe "env" $ do
       it "should parse FOO=bar BAR=1" $

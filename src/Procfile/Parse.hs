@@ -6,12 +6,12 @@ import           Data.Monoid
 import           Text.Parser.LookAhead
 import           Text.Trifecta hiding (spaces)
 
-import           Procfile.Types        (Proc (Proc), Procfile)
+import           Procfile.Types        (App (App), Procfile)
 
 procfile :: Parser Procfile
 procfile = proc `sepEndBy` (void newline <|> eof)
 
-proc :: Parser Proc
+proc :: Parser App
 proc = do
     n <- name <* spaces
     envs <- many (try env) <* spaces
@@ -19,7 +19,7 @@ proc = do
     envs' <- try $ many (try env) <* spaces
     a <- try args <* spaces
     envs'' <- try $ many (try env) <* spaces
-    return $ Proc n c a (envs <> envs' <> envs'')
+    return $ App n c a (envs <> envs' <> envs'')
 
 name :: Parser String
 name = some (alphaNum <|> char '_') <* char ':'

@@ -35,7 +35,7 @@ import           Procfile.Types
 type Log = (String, Text)
 
 run :: String -> Procfile -> IO ()
-run cmd' procs = case find (\Proc{cmd} -> cmd == cmd') procs of
+run cmd' procs = case find (\App{cmd} -> cmd == cmd') procs of
                   Just proc -> Houseman.start [proc] -- TODO Remove color in run command
                   Nothing   -> die ("Command '" ++ cmd' ++ "' not found in Procfile")
 
@@ -45,7 +45,7 @@ colors = cycle [32..36]
 colorString :: Color -> Text -> Text
 colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
-start :: [Proc] -> IO ()
+start :: [App] -> IO ()
 start procs = do
     print procs
     log <- newChan
@@ -61,12 +61,12 @@ start procs = do
       putStrLn "bye"
       exitWith exitStatus
   where
-    withProcesses :: Chan Log -> [Proc] -> ([ProcessHandle] -> IO ()) -> IO ()
+    withProcesses :: Chan Log -> [App] -> ([ProcessHandle] -> IO ()) -> IO ()
     withProcesses log procs action = do
         phs <- foldM go [] procs
         action phs
       where
-        go :: [ProcessHandle] -> Proc -> IO [ProcessHandle]
+        go :: [ProcessHandle] -> App -> IO [ProcessHandle]
         go phs p = bracket (Houseman.runProcess p log)
                            terminateAndWaitForProcess
                            (\ph -> return (phs ++ [ph]))
@@ -109,8 +109,8 @@ start procs = do
                                           Nothing -> let color = colors !! length xs
                                                          in (color,(x,color):xs)
 
-runProcess :: Proc -> Chan Log -> IO ProcessHandle
-runProcess Proc {name,cmd,args,envs} log =  do
+runProcess :: App -> Chan Log -> IO ProcessHandle
+runProcess App {name,cmd,args,envs} log =  do
     currentEnvs <- getEnvironment
     d <- doesFileExist ".env"
     dotEnvs <- if d then Dotenv.parseFile ".env" else return []
