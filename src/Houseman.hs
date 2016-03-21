@@ -5,6 +5,7 @@
 module Houseman where
 
 import           Control.Concurrent
+import           Control.Monad
 import           Data.List
 import           System.Directory
 import           System.Environment
