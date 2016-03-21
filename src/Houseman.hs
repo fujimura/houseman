@@ -28,16 +28,26 @@ run cmd' apps = case find (\App{cmd} -> cmd == cmd') apps of
 start :: [App] -> IO ()
 start apps = do
     print apps
+
+    -- Allocate logger
     logger <- newLogger
+
+    -- Run apps
     bracketMany (map (`runApp` logger) apps) terminateAndWaitForProcess $ \phs -> do
+      -- Get a MVar for exit code
       m <- newEmptyMVar
 
+      -- Kill apps with keyboard signal
       _ <- installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
 
       -- If an app was terminated, terminate others as well
       _ <- forkIO $ watchTerminationOfProcesses (terminateAll m phs) phs
+
+      -- Output logs to stdout
       _ <- forkIO $ outputLog logger
 
+      -- Wait MVar is filled with exit code. It will be filled in keyboard
+      -- handler or termination of an app
       exitStatus <- takeMVar m
       putStrLn "bye"
       exitWith exitStatus
@@ -45,9 +55,14 @@ start apps = do
 -- Run given app with given logger.
 runApp :: App -> Logger -> IO ProcessHandle
 runApp App {name,cmd,args,envs} logger =  do
-    currentEnvs <- getEnvironment
-    d <- doesFileExist ".env"
-    dotEnvs <- if d then Dotenv.parseFile ".env" else return []
-    (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just (nub $ envs ++ dotEnvs ++ currentEnvs)}
+    -- Build environment variables to run app.
+    -- Priority: 1. Procfile, 2. dotenv, 3. the environment
+    envs' <- nub . mconcat <$> sequence [return envs, getEnvsInDotEnvFile,  getEnvironment]
+    (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just envs' }
     _ <- forkIO $ runLogger name logger master
     return ph
+  where
+    getEnvsInDotEnvFile :: IO [Env]
+    getEnvsInDotEnvFile = do
+        d <- doesFileExist ".env"
+        if d then Dotenv.parseFile ".env" else return []
