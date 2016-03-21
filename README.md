@@ -26,7 +26,13 @@ $ houseman run --help
 
 ## Installation
 
-TBD
+Get [Stack](http://haskellstack.org) to run Haskell compilier, and
+
+```
+$ git clone https://github.com/fujimura/houseman.git
+$ cd houseman
+$ stack install
+```
 
 ## Contributing
 
