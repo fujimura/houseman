@@ -45,11 +45,18 @@ colors = cycle [32..36]
 colorString :: Color -> Text -> Text
 colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
+bracketMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
+bracketMany = go []
+  where
+    go :: [a] -> [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
+    go cs []               _     thing = thing cs
+    go cs (before:befores) after thing = bracket before after (\c -> go (c:cs) befores after thing)
+
 start :: [App] -> IO ()
 start apps = do
     print apps
     log <- newChan
-    withProcesses log apps $ \phs -> do
+    bracketMany (map (flip runApp log) apps) terminateAndWaitForProcess $ \phs -> do
       m <- newEmptyMVar
 
       installHandler keyboardSignal (Catch (terminateAll m phs)) Nothing
@@ -61,16 +68,6 @@ start apps = do
       putStrLn "bye"
       exitWith exitStatus
   where
-    withProcesses :: Chan Log -> [App] -> ([ProcessHandle] -> IO ()) -> IO ()
-    withProcesses log apps action = do
-        phs <- foldM go [] apps
-        action phs
-      where
-        go :: [ProcessHandle] -> App -> IO [ProcessHandle]
-        go phs p = bracket (runApp p log)
-                           terminateAndWaitForProcess
-                           (\ph -> return (phs ++ [ph]))
-
     waitForProcessesAndTerminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
     waitForProcessesAndTerminateAll m phs = go
       where
