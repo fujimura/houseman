@@ -18,6 +18,8 @@ dependencies:
   - parsers
   - time
   - optparse-generic
+  - dotenv
+  - directory
 
 library:
   source-dirs: src

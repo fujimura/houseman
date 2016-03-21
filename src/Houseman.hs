@@ -6,14 +6,15 @@ module Houseman where
 
 import           Control.Concurrent
 import           Control.Concurrent.Chan
+import           Control.Exception
 import           Control.Monad
-import Control.Exception
 import           Data.List
-import           Data.Monoid
 import           Data.Maybe
-import           Data.Text             (Text)
+import           Data.Monoid
+import           Data.Text               (Text)
 import           Data.Time
 import           GHC.IO.Handle
+import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.IO
@@ -21,10 +22,11 @@ import           System.Posix.Signals
 import           System.Posix.Types
 import           System.Process
 
-import qualified Data.Text             as Text
-import qualified Data.Text.IO          as Text
-import qualified System.Posix.IO       as IO
-import qualified System.Posix.Terminal as Terminal
+import qualified Configuration.Dotenv    as Dotenv
+import qualified Data.Text               as Text
+import qualified Data.Text.IO            as Text
+import qualified System.Posix.IO         as IO
+import qualified System.Posix.Terminal   as Terminal
 
 import           Procfile.Types
 
@@ -56,7 +58,6 @@ start procs = do
       exitStatus <- takeMVar m
       putStrLn "bye"
       exitWith exitStatus
-
   where
     withProcesses :: Chan Log -> [Proc] -> ([ProcessHandle] -> IO ()) -> IO ()
     withProcesses log procs action = do
@@ -109,7 +110,9 @@ start procs = do
 runProcess :: Proc -> Chan Log -> IO ProcessHandle
 runProcess Proc {name,cmd,args,envs} log =  do
     currentEnvs <- getEnvironment
-    (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just (envs ++ currentEnvs) }
+    d <- doesFileExist ".env"
+    dotEnvs <- if d then Dotenv.parseFile ".env" else return []
+    (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just (nub $ envs ++ dotEnvs ++ currentEnvs)}
     forkIO $ readLoop master
     return ph
   where

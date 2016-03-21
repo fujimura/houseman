@@ -32,6 +32,8 @@ library
     , parsers
     , time
     , optparse-generic
+    , dotenv
+    , directory
   exposed-modules:
       Houseman
       Procfile.Parse
@@ -53,6 +55,8 @@ executable houseman
     , parsers
     , time
     , optparse-generic
+    , dotenv
+    , directory
     , houseman
   default-language: Haskell2010
 
@@ -73,6 +77,8 @@ test-suite spec
     , parsers
     , time
     , optparse-generic
+    , dotenv
+    , directory
     , hspec == 2.*
     , temporary
     , silently
