@@ -5,25 +5,19 @@
 module Houseman where
 
 import           Control.Concurrent
-import           Control.Exception
-import           Control.Monad
 import           Data.List
-import           Data.Maybe
-import           GHC.IO.Exception
-import           GHC.IO.Handle
 import           System.Directory
 import           System.Environment
 import           System.Exit
-import           System.IO
 import           System.Posix.Signals
-import           System.Posix.Types
 import           System.Process
 
-import qualified Configuration.Dotenv  as Dotenv
-import qualified System.Posix.IO       as IO
-import qualified System.Posix.Terminal as Terminal
+import qualified Configuration.Dotenv as Dotenv
 
-import           Houseman.Logger       (newLogger, outputLog, runLogger)
+import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
+                                       terminateAll, terminateAndWaitForProcess,
+                                       waitForProcessesAndTerminateAll)
+import           Houseman.Logger      (newLogger, outputLog, runLogger)
 import           Procfile.Types
 
 run :: String -> Procfile -> IO ()
@@ -46,30 +40,8 @@ start apps = do
       exitStatus <- takeMVar m
       putStrLn "bye"
       exitWith exitStatus
-  where
-    waitForProcessesAndTerminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
-    waitForProcessesAndTerminateAll m phs = go
-      where
-        go = do
-          b <- any isJust <$> mapM getProcessExitCode phs
-          if b then do
-            terminateAll m phs
-            threadDelay 1000
-               else go
 
-    terminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
-    terminateAll m phs = do
-      forM_ phs terminateAndWaitForProcess
-      putMVar m (ExitFailure 1)
-
-terminateAndWaitForProcess :: ProcessHandle -> IO ()
-terminateAndWaitForProcess ph = do
-  b <- getProcessExitCode ph
-  when (isNothing b) $ do
-    terminateProcess ph
-    waitForProcess ph
-    return ()
-
+-- Run given app with given logger.
 runApp :: App -> Logger -> IO ProcessHandle
 runApp App {name,cmd,args,envs} logger =  do
     currentEnvs <- getEnvironment
@@ -78,31 +50,3 @@ runApp App {name,cmd,args,envs} logger =  do
     (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just (nub $ envs ++ dotEnvs ++ currentEnvs)}
     forkIO $ runLogger name logger master
     return ph
-
-fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
-fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
-
-runInPseudoTerminal :: CreateProcess -> IO (Handle, Handle, ProcessHandle)
-runInPseudoTerminal p = do
-    -- TODO handle leaks possibility
-    (read,write) <- fdsToHandles =<< IO.createPipe
-    (master,slave) <- fdsToHandles =<< Terminal.openPseudoTerminal
-    encoding <- mkTextEncoding "utf8"
-    forM_ [read,write,master,slave,stdout] $ \handle -> do
-      hSetBuffering handle NoBuffering
-      hSetEncoding handle encoding
-    hSetNewlineMode master universalNewlineMode
-    (_, _, _, ph) <-
-        createProcess p { std_in = UseHandle read
-                        , std_out = UseHandle slave
-                        , std_err = UseHandle slave
-                        }
-
-    return (master, write, ph)
-
-bracketMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
-bracketMany = go []
-  where
-    go :: [a] -> [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
-    go cs []               _     thing = thing cs
-    go cs (before:befores) after thing = bracket before after (\c -> go (c:cs) befores after thing)

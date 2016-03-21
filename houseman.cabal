@@ -36,6 +36,7 @@ library
     , directory
   exposed-modules:
       Houseman
+      Houseman.Internal
       Houseman.Logger
       Procfile.Parse
       Procfile.Types
@@ -90,6 +91,7 @@ test-suite spec
       HousemanSpec
       Procfile.ParseSpec
       Houseman
+      Houseman.Internal
       Houseman.Logger
       Procfile.Parse
       Procfile.Types
