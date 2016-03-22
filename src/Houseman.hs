@@ -39,7 +39,7 @@ start apps = do
       m <- newEmptyMVar
 
       -- Fill MVar with signal
-      [sigINT, sigTERM, sigKILL, keyboardSignal] `forM_` \signal ->
+      [sigINT, sigTERM, keyboardSignal] `forM_` \signal ->
         installHandler signal (Catch (putMVar m ())) Nothing
 
       -- Fill MVar with any process termination
