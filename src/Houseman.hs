@@ -16,7 +16,7 @@ import           System.Process
 import qualified Configuration.Dotenv as Dotenv
 
 import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
-                                       terminateAll, terminateAndWaitForProcess,
+                                       terminateAndWaitForProcess,
                                        watchTerminationOfProcesses)
 import           Houseman.Logger      (newLogger, outputLog, runLogger)
 import           Procfile.Types
@@ -35,24 +35,26 @@ start apps = do
 
     -- Run apps
     bracketMany (map (`runApp` logger) apps) terminateAndWaitForProcess $ \phs -> do
-      -- Get a MVar for exit code
+      -- Get a MVar to detect termination of a process
       m <- newEmptyMVar
 
-      -- Kill apps with signals
+      -- Fill MVar with signal
       [sigINT, sigTERM, sigKILL, keyboardSignal] `forM_` \signal ->
-        installHandler signal (Catch (terminateAll m phs)) Nothing
+        installHandler signal (Catch (putMVar m ())) Nothing
 
-      -- If an app was terminated, terminate others as well
-      _ <- forkIO $ watchTerminationOfProcesses (terminateAll m phs) phs
+      -- Fill MVar with any process termination
+      _ <- forkIO $ watchTerminationOfProcesses (putMVar m ()) phs
 
       -- Output logs to stdout
       _ <- forkIO $ outputLog logger
 
-      -- Wait MVar is filled with exit code. It will be filled in keyboard
-      -- handler or termination of an app
-      exitStatus <- takeMVar m
+      -- Wait a termination
+      takeMVar m
+
+      -- Terminate all and exit
+      forM_ phs terminateAndWaitForProcess
       putStrLn "bye"
-      exitWith exitStatus
+      exitSuccess
 
 -- Run given app with given logger.
 runApp :: App -> Logger -> IO ProcessHandle

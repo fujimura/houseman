@@ -4,7 +4,6 @@
 
 module Houseman.Internal
   ( watchTerminationOfProcesses
-  , terminateAll
   , terminateAndWaitForProcess
   , fdsToHandles
   , runInPseudoTerminal
@@ -33,11 +32,6 @@ watchTerminationOfProcesses handler phs = go
            else do
              threadDelay 1000
              go
-
-terminateAll :: MVar ExitCode -> [ProcessHandle] -> IO ()
-terminateAll m phs = do
-  forM_ phs terminateAndWaitForProcess
-  putMVar m (ExitFailure 1)
 
 terminateAndWaitForProcess :: ProcessHandle -> IO ExitCode
 terminateAndWaitForProcess ph = do
