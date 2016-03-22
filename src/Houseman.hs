@@ -34,7 +34,7 @@ start apps = do
     logger <- newLogger
 
     -- Run apps
-    bracketMany (map (`runApp` logger) apps) terminateAndWaitForProcess $ \phs -> do
+    bracketMany (map (runApp logger) apps) terminateAndWaitForProcess $ \phs -> do
       -- Get a MVar to detect termination of a process
       m <- newEmptyMVar
 
@@ -57,8 +57,8 @@ start apps = do
       exitSuccess
 
 -- Run given app with given logger.
-runApp :: App -> Logger -> IO ProcessHandle
-runApp App {name,cmd,args,envs} logger =  do
+runApp :: Logger -> App -> IO ProcessHandle
+runApp logger App {name,cmd,args,envs} =  do
     -- Build environment variables to run app.
     -- Priority: 1. Procfile, 2. dotenv, 3. the environment
     envs' <- nub . mconcat <$> sequence [return envs, getEnvsInDotEnvFile,  getEnvironment]
