@@ -16,10 +16,11 @@ import           System.Process
 import qualified Configuration.Dotenv as Dotenv
 
 import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
-                                       terminateAndWaitForProcess,
-                                       withAnyExit,
-                                       withAllExit)
-import           Houseman.Logger      (newLogger, runLogger, installLogger, stopLogger)
+                                       terminateAndWaitForProcess, withAllExit,
+                                       withAnyExit)
+import           Houseman.Logger      (installLogger, newLogger, runLogger,
+                                       stopLogger)
+import           Houseman.Types
 import           Procfile.Types
 
 run :: String -> Procfile -> IO ExitCode

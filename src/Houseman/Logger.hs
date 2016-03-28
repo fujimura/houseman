@@ -22,7 +22,7 @@ import           System.IO.Error
 import qualified Data.Text          as Text
 import qualified Data.Text.IO       as Text
 
-import           Procfile.Types
+import           Houseman.Types
 
 newLogger :: IO Logger
 newLogger = do

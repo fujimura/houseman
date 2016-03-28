@@ -9,6 +9,7 @@ import           System.Process
 
 import qualified Houseman
 import           Houseman.Logger        (newLogger, readLogger)
+import           Houseman.Types
 import           Procfile.Types
 
 import           System.IO.Silently     (capture)

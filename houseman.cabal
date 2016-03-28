@@ -38,6 +38,7 @@ library
       Houseman
       Houseman.Internal
       Houseman.Logger
+      Houseman.Types
       Procfile.Parse
       Procfile.Types
   default-language: Haskell2010
@@ -93,6 +94,7 @@ test-suite spec
       Houseman
       Houseman.Internal
       Houseman.Logger
+      Houseman.Types
       Procfile.Parse
       Procfile.Types
   default-language: Haskell2010
