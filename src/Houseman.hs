@@ -19,7 +19,7 @@ import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
                                        terminateAndWaitForProcess,
                                        watchFailureOfProcesses,
                                        withAllExit)
-import           Houseman.Logger      (newLogger, runLogger, installLogger)
+import           Houseman.Logger      (newLogger, runLogger, installLogger, stopLogger)
 import           Procfile.Types
 
 run :: String -> Procfile -> IO ExitCode
@@ -35,12 +35,14 @@ start apps = do
     logger <- newLogger
 
     -- Run apps
-    bracketMany (map (runApp logger) apps) terminateAndWaitForProcess $ \phs -> do
+    bracketMany (map (runApp logger) apps) (terminateAndWaitForProcess . fst) $ \xs -> do
+      let phs = map fst xs
+          logFinishes = map snd xs
       -- Get a MVar to detect termination of a process
       m <- newEmptyMVar
 
       -- Output logs to stdout
-      _ <- forkIO $ runLogger logger
+      m' <- runLogger logger
 
       -- Fill MVar with signal
       [sigINT, sigTERM, keyboardSignal] `forM_` \signal ->
@@ -55,19 +57,22 @@ start apps = do
 
       -- Terminate all and exit
       forM_ phs terminateAndWaitForProcess
-      threadDelay (1000 * 100)
+      mapM_ takeMVar logFinishes
+      stopLogger logger
+      takeMVar m'
       putStrLn "bye"
       return ExitSuccess
 
 -- Run given app with given logger.
-runApp :: Logger -> App -> IO ProcessHandle
+runApp :: Logger -> App -> IO (ProcessHandle, MVar ())
 runApp logger App {name,cmd,args,envs} =  do
     -- Build environment variables to run app.
     -- Priority: 1. Procfile, 2. dotenv, 3. the environment
     envs' <- nub . mconcat <$> sequence [return envs, getEnvsInDotEnvFile,  getEnvironment]
     (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just envs' }
-    _ <- forkIO $ installLogger name logger master
-    return ph
+    m <- newEmptyMVar
+    _ <- forkIO $ installLogger name logger master m
+    return (ph,m)
   where
     getEnvsInDotEnvFile :: IO [Env]
     getEnvsInDotEnvFile = do

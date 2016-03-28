@@ -7,7 +7,7 @@ type Procfile = [App]
 type Env = (String, String)
 type Color = Int
 
-type Log = (String, Text)
+data Log = Log (String, Text) | LogStop deriving (Eq,Ord,Show)
 type Logger = Chan Log
 
 data App = App { name :: String

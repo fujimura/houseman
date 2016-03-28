@@ -34,14 +34,14 @@ spec = describe "Houseman" $ do
   describe "runApp" $ do
     it "should run given process" $ do
       log' <- newChan
-      _ <- capture . waitForProcess =<< Houseman.runApp log' (App "echo" "./test/fixtures/echo.sh" ["foo", "🙈"] [("ECHO", "1")])
-      readChan log' `shouldReturn` ("echo", "ECHO=1")
-      readChan log' `shouldReturn` ("echo", "foo")
-      readChan log' `shouldReturn` ("echo", "🙈")
+      _ <- capture . waitForProcess . fst =<< Houseman.runApp log' (App "echo" "./test/fixtures/echo.sh" ["foo", "🙈"] [("ECHO", "1")])
+      readChan log' `shouldReturn` Log ("echo", "ECHO=1")
+      readChan log' `shouldReturn` Log ("echo", "foo")
+      readChan log' `shouldReturn` Log ("echo", "🙈")
 
     it "should use .env as dotenv file, which supersedes original environment" $ inTempDirectory $ do
       setEnv "BAZ" "3"
       writeFile ".env" "BAZ=2"
       log' <- newChan
-      _ <- capture . waitForProcess =<< Houseman.runApp log' (App "echo" "printenv" ["BAZ"] [])
-      readChan log' `shouldReturn` ("echo", "2")
+      _ <- capture . waitForProcess . fst =<< Houseman.runApp log' (App "echo" "printenv" ["BAZ"] [])
+      readChan log' `shouldReturn` Log ("echo", "2")
