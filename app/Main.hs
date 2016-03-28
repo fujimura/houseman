@@ -7,6 +7,7 @@ module Main where
 
 import           Data.Maybe
 import           Options.Generic
+import           System.Exit     (exitWith)
 import           Text.Trifecta   (parseFromFile)
 
 import qualified Houseman
@@ -25,5 +26,5 @@ main = do
 
     case (opts, mProcfile) of
       (_, Nothing)                   -> return ()
-      (Start _, Just procfile)       -> Houseman.start procfile
-      (Run {command}, Just procfile) -> Houseman.run command procfile
+      (Start _, Just procfile)       -> Houseman.start procfile >>= exitWith
+      (Run {command}, Just procfile) -> Houseman.run command procfile >>= exitWith

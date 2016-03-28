@@ -17,16 +17,17 @@ import qualified Configuration.Dotenv as Dotenv
 
 import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
                                        terminateAndWaitForProcess,
-                                       watchTerminationOfProcesses)
+                                       watchFailureOfProcesses,
+                                       withAllExit)
 import           Houseman.Logger      (newLogger, runLogger, installLogger)
 import           Procfile.Types
 
-run :: String -> Procfile -> IO ()
+run :: String -> Procfile -> IO ExitCode
 run cmd' apps = case find (\App{cmd} -> cmd == cmd') apps of
                   Just app -> Houseman.start [app] -- TODO Remove color in run command
                   Nothing   -> die ("Command '" ++ cmd' ++ "' not found in Procfile")
 
-start :: [App] -> IO ()
+start :: [App] -> IO ExitCode
 start apps = do
     print apps
 
@@ -38,23 +39,25 @@ start apps = do
       -- Get a MVar to detect termination of a process
       m <- newEmptyMVar
 
+      -- Output logs to stdout
+      _ <- forkIO $ runLogger logger
+
       -- Fill MVar with signal
       [sigINT, sigTERM, keyboardSignal] `forM_` \signal ->
         installHandler signal (Catch (putMVar m ())) Nothing
 
       -- Fill MVar with any process termination
-      _ <- forkIO $ watchTerminationOfProcesses (putMVar m ()) phs
-
-      -- Output logs to stdout
-      _ <- forkIO $ runLogger logger
+      _ <- forkIO $ watchFailureOfProcesses (putMVar m ()) phs
+      _ <- forkIO $ withAllExit (== ExitSuccess) phs (putMVar m ())
 
       -- Wait a termination
       takeMVar m
 
       -- Terminate all and exit
       forM_ phs terminateAndWaitForProcess
+      threadDelay (1000 * 100)
       putStrLn "bye"
-      exitSuccess
+      return ExitSuccess
 
 -- Run given app with given logger.
 runApp :: Logger -> App -> IO ProcessHandle

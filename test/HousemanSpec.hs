@@ -20,6 +20,17 @@ main = hspec spec
 
 spec :: Spec
 spec = describe "Houseman" $ do
+  describe "start" $ do
+    it "should run given apps" $ do
+      let apps = [ App "echo1" "./test/fixtures/echo.sh" ["foo", "bar"] []
+                 , App "echo2" "./test/fixtures/echo.sh" ["baz", "🙈"] []
+                 ]
+      (result,_) <- capture $ Houseman.start apps
+      result `shouldContain` "echo1: \ESC[0mfoo"
+      result `shouldContain` "echo1: \ESC[0mbar"
+      result `shouldContain` "echo2: \ESC[0mbaz"
+      result `shouldContain` "echo2: \ESC[0m🙈"
+
   describe "runApp" $ do
     it "should run given process" $ do
       log' <- newChan
