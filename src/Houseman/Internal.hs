@@ -3,10 +3,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Houseman.Internal
-  ( watchFailureOfProcesses
-  , terminateAndWaitForProcess
+  ( terminateAndWaitForProcess
   , withAllExit
-  , fdsToHandles
+  , withAnyExit
   , runInPseudoTerminal
   , bracketMany
   ) where
@@ -24,18 +23,15 @@ import           System.Process
 import qualified System.Posix.IO       as IO
 import qualified System.Posix.Terminal as Terminal
 
-watchFailureOfProcesses :: IO a -> [ProcessHandle] -> IO ()
-watchFailureOfProcesses handler phs = go
+
+withAnyExit :: (ExitCode -> Bool) -> [ProcessHandle] -> IO a -> IO a
+withAnyExit predicate phs action = go
   where
     go = do
-      b <- any isFailure <$> mapM getProcessExitCode phs
-      if b then void handler
-           else do
-             threadDelay 1000
-             go
-    isFailure :: Maybe ExitCode -> Bool
-    isFailure (Just (ExitFailure _)) = True
-    isFailure _ = False
+      exits <- catMaybes <$> mapM getProcessExitCode phs
+      if any predicate exits
+        then action
+        else threadDelay 1000 >> go
 
 withAllExit :: (ExitCode -> Bool) -> [ProcessHandle] -> IO a -> IO a
 withAllExit predicate phs action = go

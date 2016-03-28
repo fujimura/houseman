@@ -17,7 +17,7 @@ import qualified Configuration.Dotenv as Dotenv
 
 import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
                                        terminateAndWaitForProcess,
-                                       watchFailureOfProcesses,
+                                       withAnyExit,
                                        withAllExit)
 import           Houseman.Logger      (newLogger, runLogger, installLogger, stopLogger)
 import           Procfile.Types
@@ -39,27 +39,28 @@ start apps = do
       let phs = map fst xs
           logFinishes = map snd xs
       -- Get a MVar to detect termination of a process
-      m <- newEmptyMVar
+      readyToTerminate <- newEmptyMVar
 
       -- Output logs to stdout
-      m' <- runLogger logger
+      logFinished <- runLogger logger
 
       -- Fill MVar with signal
       [sigINT, sigTERM, keyboardSignal] `forM_` \signal ->
-        installHandler signal (Catch (putMVar m ())) Nothing
+        installHandler signal (Catch (putMVar readyToTerminate ())) Nothing
 
-      -- Fill MVar with any process termination
-      _ <- forkIO $ watchFailureOfProcesses (putMVar m ()) phs
-      _ <- forkIO $ withAllExit (== ExitSuccess) phs (putMVar m ())
+      -- Fill MVar with any failure
+      _ <- forkIO $ withAnyExit (/= ExitSuccess) phs (putMVar readyToTerminate ())
+      -- Fill MVar with all success
+      _ <- forkIO $ withAllExit (== ExitSuccess) phs (putMVar readyToTerminate ())
 
       -- Wait a termination
-      takeMVar m
+      takeMVar readyToTerminate
 
       -- Terminate all and exit
-      forM_ phs terminateAndWaitForProcess
+      mapM_ terminateAndWaitForProcess phs
       mapM_ takeMVar logFinishes
       stopLogger logger
-      takeMVar m'
+      takeMVar logFinished
       putStrLn "bye"
       return ExitSuccess
 
