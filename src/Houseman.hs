@@ -18,7 +18,7 @@ import qualified Configuration.Dotenv as Dotenv
 import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
                                        terminateAndWaitForProcess,
                                        watchTerminationOfProcesses)
-import           Houseman.Logger      (newLogger, outputLog, runLogger)
+import           Houseman.Logger      (newLogger, runLogger, installLogger)
 import           Procfile.Types
 
 run :: String -> Procfile -> IO ()
@@ -46,7 +46,7 @@ start apps = do
       _ <- forkIO $ watchTerminationOfProcesses (putMVar m ()) phs
 
       -- Output logs to stdout
-      _ <- forkIO $ outputLog logger
+      _ <- forkIO $ runLogger logger
 
       -- Wait a termination
       takeMVar m
@@ -63,7 +63,7 @@ runApp logger App {name,cmd,args,envs} =  do
     -- Priority: 1. Procfile, 2. dotenv, 3. the environment
     envs' <- nub . mconcat <$> sequence [return envs, getEnvsInDotEnvFile,  getEnvironment]
     (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just envs' }
-    _ <- forkIO $ runLogger name logger master
+    _ <- forkIO $ installLogger name logger master
     return ph
   where
     getEnvsInDotEnvFile :: IO [Env]

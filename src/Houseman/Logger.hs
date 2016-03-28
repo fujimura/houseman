@@ -4,8 +4,8 @@
 
 module Houseman.Logger
   ( newLogger
+  , installLogger
   , runLogger
-  , outputLog
   ) where
 
 import           Control.Concurrent
@@ -25,8 +25,8 @@ import           Procfile.Types
 newLogger :: IO Logger
 newLogger = newChan
 
-outputLog :: Logger -> IO ()
-outputLog logger = go []
+runLogger :: Logger -> IO ()
+runLogger logger = go []
   where
     go cs = do
       (name,l) <- readChan logger
@@ -46,8 +46,8 @@ outputLog logger = go []
     colorString :: Color -> Text -> Text
     colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
-runLogger :: String -> Logger -> Handle -> IO ()
-runLogger name logger handle = go
+installLogger :: String -> Logger -> Handle -> IO ()
+installLogger name logger handle = go
   where
     go = do
       c <- (||) <$> hIsClosed handle <*> hIsEOF' handle
