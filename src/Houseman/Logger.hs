@@ -6,6 +6,7 @@ module Houseman.Logger
   ( newLogger
   , installLogger
   , runLogger
+  , readLogger
   , stopLogger
   ) where
 
@@ -24,15 +25,20 @@ import qualified Data.Text.IO       as Text
 import           Procfile.Types
 
 newLogger :: IO Logger
-newLogger = newChan
-
-runLogger :: Logger -> IO (MVar ())
-runLogger logger = do
+newLogger = do
+    c <- newChan
     m <- newEmptyMVar
-    _ <- forkIO $ go [] m
-    return m
+    return $ Logger c m
+
+readLogger :: Logger -> IO Log
+readLogger (Logger logger _) = readChan logger
+
+runLogger :: Logger -> IO ()
+runLogger (Logger logger done) = do
+    _ <- forkIO $ go []
+    return ()
   where
-    go cs m = do
+    go cs = do
       log' <- readChan logger
       case log' of
         Log (name,l) -> do
@@ -40,8 +46,8 @@ runLogger logger = do
           t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
           Text.putStrLn (colorString color (t <> " " <> Text.pack name <> ": ") <> l )
           threadDelay 1000
-          go cs' m
-        LogStop -> putMVar m ()
+          go cs'
+        LogStop -> putMVar done ()
     lookupOrInsertNewColor :: String -> [(String, Color)] -> (Color, [(String, Color)])
     lookupOrInsertNewColor x xs = case x `lookup` xs of
                                       Just color -> (color,xs)
@@ -54,7 +60,7 @@ runLogger logger = do
     colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
 installLogger :: String -> Logger -> Handle -> MVar () -> IO ()
-installLogger name logger handle m = go
+installLogger name (Logger logger _) handle m = go
   where
     go = do
       c <- (||) <$> hIsClosed handle <*> hIsEOF' handle
@@ -67,4 +73,6 @@ installLogger name logger handle m = go
                   (\e -> if ioeGetErrorType e == HardwareFault then return True else ioError e)
 
 stopLogger :: Logger -> IO ()
-stopLogger logger = writeChan logger LogStop
+stopLogger (Logger logger stop) = do
+    writeChan logger LogStop
+    takeMVar stop

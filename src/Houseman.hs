@@ -42,7 +42,7 @@ start apps = do
       readyToTerminate <- newEmptyMVar
 
       -- Output logs to stdout
-      logFinished <- runLogger logger
+      runLogger logger
 
       -- Fill MVar with signal
       [sigINT, sigTERM, keyboardSignal] `forM_` \signal ->
@@ -60,7 +60,6 @@ start apps = do
       mapM_ terminateAndWaitForProcess phs
       mapM_ takeMVar logFinishes
       stopLogger logger
-      takeMVar logFinished
       putStrLn "bye"
       return ExitSuccess
 

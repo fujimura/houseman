@@ -8,6 +8,7 @@ import           System.Environment
 import           System.Process
 
 import qualified Houseman
+import           Houseman.Logger        (newLogger, readLogger)
 import           Procfile.Types
 
 import           System.IO.Silently     (capture)
@@ -33,15 +34,15 @@ spec = describe "Houseman" $ do
 
   describe "runApp" $ do
     it "should run given process" $ do
-      log' <- newChan
+      log' <- newLogger
       _ <- capture . waitForProcess . fst =<< Houseman.runApp log' (App "echo" "./test/fixtures/echo.sh" ["foo", "🙈"] [("ECHO", "1")])
-      readChan log' `shouldReturn` Log ("echo", "ECHO=1")
-      readChan log' `shouldReturn` Log ("echo", "foo")
-      readChan log' `shouldReturn` Log ("echo", "🙈")
+      readLogger log' `shouldReturn` Log ("echo", "ECHO=1")
+      readLogger log' `shouldReturn` Log ("echo", "foo")
+      readLogger log' `shouldReturn` Log ("echo", "🙈")
 
     it "should use .env as dotenv file, which supersedes original environment" $ inTempDirectory $ do
       setEnv "BAZ" "3"
       writeFile ".env" "BAZ=2"
-      log' <- newChan
+      log' <- newLogger
       _ <- capture . waitForProcess . fst =<< Houseman.runApp log' (App "echo" "printenv" ["BAZ"] [])
-      readChan log' `shouldReturn` Log ("echo", "2")
+      readLogger log' `shouldReturn` Log ("echo", "2")
