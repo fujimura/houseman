@@ -8,7 +8,5 @@ import qualified Data.Text             as Text
 import qualified Data.Text.Encoding    as Text
 import           System.Environment    (getArgs)
 import           System.IO
-import           System.IO.Streams     (Generator, InputStream, OutputStream)
-import qualified System.IO.Streams     as Streams
 import qualified System.Process        as Process
 import           Text.Trifecta
