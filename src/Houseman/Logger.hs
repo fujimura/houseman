@@ -45,7 +45,6 @@ runLogger (Logger logger done) = do
           let (color, cs') = name `lookupOrInsertNewColor` cs
           t <- Text.pack <$> formatTime defaultTimeLocale "%H:%M:%S" <$> getZonedTime
           Text.putStrLn (colorString color (t <> " " <> Text.pack name <> ": ") <> l )
-          threadDelay 1000
           go cs'
         LogStop -> putMVar done ()
     lookupOrInsertNewColor :: String -> [(String, Color)] -> (Color, [(String, Color)])
@@ -67,7 +66,6 @@ installLogger name (Logger logger _) handle m = go
       if c then putMVar m ()
            else do
              Text.hGetLine handle >>= \l -> writeChan logger (Log (name,l))
-             threadDelay 1000
              go
     hIsEOF' h = hIsEOF h `catchIOError`
                   (\e -> if ioeGetErrorType e == HardwareFault then return True else ioError e)
