@@ -7,7 +7,7 @@ module Houseman.Internal
   , withAllExit
   , withAnyExit
   , runInPseudoTerminal
-  , bracketMany
+  , bracketOnErrorMany
   ) where
 
 import           Control.Concurrent
@@ -72,9 +72,9 @@ runInPseudoTerminal p = do
 
     return (master, write, ph)
 
-bracketMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
-bracketMany = go []
+bracketOnErrorMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
+bracketOnErrorMany = go []
   where
     go :: [a] -> [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
     go cs []               _     thing = thing cs
-    go cs (before:befores) after thing = bracket before after (\c -> go (c:cs) befores after thing)
+    go cs (before:befores) after thing = bracketOnError before after (\c -> go (c:cs) befores after thing)

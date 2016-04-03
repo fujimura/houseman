@@ -11,6 +11,7 @@ module Houseman.Logger
   ) where
 
 import           Control.Concurrent
+import           Control.Exception  (onException)
 import           Control.Monad
 import           Data.Monoid
 import           Data.Text          (Text)
@@ -59,7 +60,7 @@ runLogger (Logger logger done) = do
     colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
 installLogger :: String -> Logger -> Handle -> MVar () -> IO ()
-installLogger name (Logger logger _) handle m = go
+installLogger name (Logger logger _) handle m = go `onException` putMVar m ()
   where
     go = do
       c <- (||) <$> hIsClosed handle <*> hIsEOF' handle

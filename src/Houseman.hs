@@ -15,7 +15,7 @@ import           System.Process
 
 import qualified Configuration.Dotenv as Dotenv
 
-import           Houseman.Internal    (bracketMany, runInPseudoTerminal,
+import           Houseman.Internal    (bracketOnErrorMany, runInPseudoTerminal,
                                        terminateAndWaitForProcess, withAllExit,
                                        withAnyExit)
 import           Houseman.Logger      (installLogger, newLogger, runLogger,
@@ -36,9 +36,8 @@ start apps = do
     logger <- newLogger
 
     -- Run apps
-    bracketMany (map (runApp logger) apps) (terminateAndWaitForProcess . fst) $ \xs -> do
-      let phs = map fst xs
-          logFinishes = map snd xs
+    bracketOnErrorMany (map (runApp logger) apps) (terminateAndWaitForProcess . fst) $ \xs -> do
+      let (phs,logFinishes) = unzip xs
       -- Get a MVar to detect termination of a process
       readyToTerminate <- newEmptyMVar
 
