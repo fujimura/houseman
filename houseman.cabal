@@ -1,4 +1,4 @@
--- This file has been generated from package.yaml by hpack version 0.9.1.
+-- This file has been generated from package.yaml by hpack version 0.9.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -34,6 +34,7 @@ library
     , optparse-generic
     , dotenv
     , directory
+    , streaming-commons
   exposed-modules:
       Houseman
       Houseman.Internal
@@ -60,6 +61,7 @@ executable houseman
     , optparse-generic
     , dotenv
     , directory
+    , streaming-commons
     , houseman
   default-language: Haskell2010
 
@@ -82,6 +84,7 @@ test-suite spec
     , optparse-generic
     , dotenv
     , directory
+    , streaming-commons
     , hspec == 2.*
     , temporary
     , silently

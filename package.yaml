@@ -20,6 +20,7 @@ dependencies:
   - optparse-generic
   - dotenv
   - directory
+  - streaming-commons
 
 library:
   source-dirs: src

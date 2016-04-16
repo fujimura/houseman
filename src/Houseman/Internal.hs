@@ -20,41 +20,49 @@ import           System.IO
 import           System.Posix.Types
 import           System.Process
 
-import qualified System.Posix.IO       as IO
-import qualified System.Posix.Terminal as Terminal
+import           Data.Streaming.Process (StreamingProcessHandle,
+                                         streamingProcess,
+                                         waitForStreamingProcess,
+                                         getStreamingProcessExitCode,
+                                         UseProvidedHandle(..),
+                                         streamingProcessHandleRaw)
+
+import qualified System.Posix.IO        as IO
+import qualified System.Posix.Terminal  as Terminal
 
 
-withAnyExit :: (ExitCode -> Bool) -> [ProcessHandle] -> IO a -> IO a
+withAnyExit :: (ExitCode -> Bool) -> [StreamingProcessHandle] -> IO a -> IO a
 withAnyExit predicate phs action = go
   where
     go = do
-      exits <- catMaybes <$> mapM getProcessExitCode phs
+      exits <- catMaybes <$> mapM getStreamingProcessExitCode phs
       if any predicate exits
         then action
         else threadDelay 1000 >> go
 
-withAllExit :: (ExitCode -> Bool) -> [ProcessHandle] -> IO a -> IO a
+withAllExit :: (ExitCode -> Bool) -> [StreamingProcessHandle] -> IO a -> IO a
 withAllExit predicate phs action = go
   where
     go = do
-      exits <- mapM getProcessExitCode phs
+      exits <- mapM getStreamingProcessExitCode phs
       if all isJust exits && all predicate (catMaybes exits)
         then action
         else threadDelay 1000 >> go
 
-terminateAndWaitForProcess :: ProcessHandle -> IO ExitCode
+terminateAndWaitForProcess :: StreamingProcessHandle -> IO ExitCode
 terminateAndWaitForProcess ph = do
-  b <- getProcessExitCode ph
+  let ph' = streamingProcessHandleRaw ph
+  b <- getStreamingProcessExitCode ph
   case b of
     Just exitcode -> return exitcode
     Nothing -> do
-      terminateProcess ph
-      waitForProcess ph
+      terminateProcess ph'
+      waitForStreamingProcess ph
 
 fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
 fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
 
-runInPseudoTerminal :: CreateProcess -> IO (Handle, Handle, ProcessHandle)
+runInPseudoTerminal :: CreateProcess -> IO (Handle, Handle, StreamingProcessHandle)
 runInPseudoTerminal p = do
     -- TODO handle leaks possibility
     (read',write) <- fdsToHandles =<< IO.createPipe
@@ -64,12 +72,11 @@ runInPseudoTerminal p = do
       hSetBuffering h NoBuffering
       hSetEncoding h encoding
     hSetNewlineMode master universalNewlineMode
-    (_, _, _, ph) <-
-        createProcess p { std_in = UseHandle read'
-                        , std_out = UseHandle slave
-                        , std_err = UseHandle slave
-                        }
-
+    (UseProvidedHandle, UseProvidedHandle, UseProvidedHandle, ph) <-
+      streamingProcess p { std_in = UseHandle read'
+                         , std_out = UseHandle slave
+                         , std_err = UseHandle slave
+                         }
     return (master, write, ph)
 
 bracketOnErrorMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c

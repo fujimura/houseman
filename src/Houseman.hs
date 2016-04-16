@@ -14,6 +14,7 @@ import           System.Posix.Signals
 import           System.Process
 
 import qualified Configuration.Dotenv as Dotenv
+import           Data.Streaming.Process (StreamingProcessHandle)
 
 import           Houseman.Internal    (bracketOnErrorMany, runInPseudoTerminal,
                                        terminateAndWaitForProcess, withAllExit,
@@ -64,7 +65,7 @@ start apps = do
       return ExitSuccess
 
 -- Run given app with given logger.
-runApp :: Logger -> App -> IO (ProcessHandle, MVar ())
+runApp :: Logger -> App -> IO (StreamingProcessHandle, MVar ())
 runApp logger App {name,cmd,args,envs} =  do
     -- Build environment variables to run app.
     -- Priority: 1. Procfile, 2. dotenv, 3. the environment
