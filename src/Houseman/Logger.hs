@@ -11,17 +11,21 @@ module Houseman.Logger
   ) where
 
 import           Control.Concurrent
-import           Control.Exception  (onException)
+import           Control.Exception        (onException)
 import           Control.Monad
+import           Data.Char
 import           Data.Monoid
-import           Data.Text          (Text)
+import           Data.Text                (Text)
 import           Data.Time
 import           GHC.IO.Exception
 import           GHC.IO.Handle
 import           System.IO.Error
 
-import qualified Data.Text          as Text
-import qualified Data.Text.IO       as Text
+import qualified Data.ByteString          as ByteString
+import qualified Data.Text                as Text
+import qualified Data.Text.Encoding       as Text
+import qualified Data.Text.Encoding.Error as Text
+import qualified Data.Text.IO             as Text
 
 import           Houseman.Types
 
@@ -66,7 +70,9 @@ installLogger name (Logger logger _) handle m = go `onException` putMVar m ()
       c <- (||) <$> hIsClosed handle <*> hIsEOF' handle
       if c then putMVar m ()
            else do
-             Text.hGetLine handle >>= \l -> writeChan logger (Log (name,l))
+             l <- Text.decodeUtf8With Text.lenientDecode . ByteString.filter (/= fromIntegral (ord '\r'))
+                  <$> ByteString.hGetLine handle
+             writeChan logger (Log (name,l))
              go
     hIsEOF' h = hIsEOF h `catchIOError`
                   (\e -> if ioeGetErrorType e == HardwareFault then return True else ioError e)
