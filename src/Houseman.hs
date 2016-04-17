@@ -37,8 +37,7 @@ start apps = do
     logger <- newLogger
 
     -- Run apps
-    bracketOnErrorMany (map (runApp logger) apps) (terminateAndWaitForProcess . fst) $ \xs -> do
-      let (phs,logFinishes) = unzip xs
+    bracketOnErrorMany (map (runApp logger) apps) terminateAndWaitForProcess $ \phs -> do
       -- Get a MVar to detect termination of a process
       readyToTerminate <- newEmptyMVar
 
@@ -59,21 +58,19 @@ start apps = do
 
       -- Terminate all and exit
       mapM_ terminateAndWaitForProcess phs
-      mapM_ takeMVar logFinishes
       stopLogger logger
       putStrLn "bye"
       return ExitSuccess
 
 -- Run given app with given logger.
-runApp :: Logger -> App -> IO (StreamingProcessHandle, MVar ())
+runApp :: Logger -> App -> IO StreamingProcessHandle
 runApp logger App {name,cmd,args,envs} =  do
     -- Build environment variables to run app.
     -- Priority: 1. Procfile, 2. dotenv, 3. the environment
     envs' <- nub . mconcat <$> sequence [return envs, getEnvsInDotEnvFile,  getEnvironment]
     (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just envs' }
-    m <- newEmptyMVar
-    _ <- forkIO $ installLogger name logger master m
-    return (ph,m)
+    forkIO $ installLogger name logger master
+    return ph
   where
     getEnvsInDotEnvFile :: IO [Env]
     getEnvsInDotEnvFile = do

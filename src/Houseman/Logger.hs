@@ -63,17 +63,16 @@ runLogger (Logger logger done) = do
     colorString :: Color -> Text -> Text
     colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
-installLogger :: String -> Logger -> Handle -> MVar () -> IO ()
-installLogger name (Logger logger _) handle m = go `onException` putMVar m ()
+installLogger :: String -> Logger -> Handle -> IO ()
+installLogger name (Logger logger _) handle = go
   where
     go = do
       c <- (||) <$> hIsClosed handle <*> hIsEOF' handle
-      if c then putMVar m ()
-           else do
-             l <- Text.decodeUtf8With Text.lenientDecode . ByteString.filter (/= fromIntegral (ord '\r'))
-                  <$> ByteString.hGetLine handle
-             writeChan logger (Log (name,l))
-             go
+      unless c $ do
+        l <- Text.decodeUtf8With Text.lenientDecode . ByteString.filter (/= fromIntegral (ord '\r'))
+             <$> ByteString.hGetLine handle
+        writeChan logger (Log (name,l))
+        go
     hIsEOF' h = hIsEOF h `catchIOError`
                   (\e -> if ioeGetErrorType e == HardwareFault then return True else ioError e)
 
