@@ -38,16 +38,12 @@ env = (,) <$> key <*> (eq' >> value)
     value = val <?> "env val"
 
 val :: Parser String
-val = stringLiteral <|> stringLiteral' <|> manyTill1 (noneOf " \n") (void space <|> eof)
+val = stringLiteral <|> stringLiteral' <|> manyTill1 (noneOf " \n") (void space <|> eof <|> void (char '='))
   <?> "val"
 
 args :: Parser [String]
-args = manyTill (strip arg) (void (lookAhead (try env)) <|> eof <|> void (lookAhead newline))
+args = manyTill (strip val) (void (lookAhead (try env)) <|> eof <|> void (lookAhead newline))
   <?> "args"
-
-arg :: Parser String
-arg = some (noneOf " =\n") <* notFollowedBy (char '=')
-  <?> "arg"
 
 strip :: CharParsing f => f a -> f a
 strip p = spaces *> p <* spaces

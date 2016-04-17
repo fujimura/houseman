@@ -95,6 +95,13 @@ spec = describe "Procfile.Parse" $ do
                                                                                 , envs = [("FOO", "1"), ("BAR", "2")]
                                                                                 }
 
+      it "should parse server: bin/rails server --binding=0.0.0.0" $
+        parse Parse.proc "server: bin/rails server --binding=0.0.0.0" `shouldBe` App { name = "server"
+                                                                                     , cmd = "bin/rails"
+                                                                                     , args = ["server", "--binding", "0.0.0.0"]
+                                                                                     , envs = []
+                                                                                     }
+
     describe "env" $ do
       it "should parse FOO=bar BAR=1" $
         parse Parse.env "FOO=bar BAR=1" `shouldBe` ("FOO", "bar")
