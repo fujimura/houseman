@@ -6,6 +6,7 @@ module Houseman where
 
 import           Control.Concurrent
 import           Control.Monad
+import           Data.Function
 import           Data.List
 import           System.Directory
 import           System.Environment
@@ -13,14 +14,15 @@ import           System.Exit
 import           System.Posix.Signals
 import           System.Process
 
-import qualified Configuration.Dotenv as Dotenv
+import qualified Configuration.Dotenv   as Dotenv
 import           Data.Streaming.Process (StreamingProcessHandle)
 
-import           Houseman.Internal    (bracketOnErrorMany, runInPseudoTerminal,
-                                       terminateAndWaitForProcess, withAllExit,
-                                       withAnyExit)
-import           Houseman.Logger      (installLogger, newLogger, runLogger,
-                                       stopLogger)
+import           Houseman.Internal      (bracketOnErrorMany,
+                                         runInPseudoTerminal,
+                                         terminateAndWaitForProcess,
+                                         withAllExit, withAnyExit)
+import           Houseman.Logger        (installLogger, newLogger, runLogger,
+                                         stopLogger)
 import           Houseman.Types
 import           Procfile.Types
 
@@ -64,11 +66,11 @@ start apps = do
 
 -- Run given app with given logger.
 runApp :: Logger -> App -> IO StreamingProcessHandle
-runApp logger App {name,cmd,args,envs} =  do
+runApp logger App {name,cmd} =  do
     -- Build environment variables to run app.
-    -- Priority: 1. Procfile, 2. dotenv, 3. the environment
-    envs' <- nub . mconcat <$> sequence [return envs, getEnvsInDotEnvFile,  getEnvironment]
-    (master, _, ph) <- runInPseudoTerminal (proc cmd args) { env = Just envs' }
+    -- .env supersedes environment from current process.
+    envs <- nubBy ((==) `on` fst)  . mconcat <$> sequence [getEnvsInDotEnvFile, getEnvironment]
+    (master, _, ph) <- runInPseudoTerminal (shell cmd) { env = Just envs }
     forkIO $ installLogger name logger master
     return ph
   where

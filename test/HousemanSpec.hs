@@ -26,8 +26,8 @@ spec :: Spec
 spec = describe "Houseman" $ do
   describe "start" $ do
     it "should run given apps" $ do
-      let apps = [ App "echo1" "./test/fixtures/echo.sh" ["foo", "bar"] []
-                 , App "echo2" "./test/fixtures/echo.sh" ["baz", "🙈"] []
+      let apps = [ App "echo1" "./test/fixtures/echo.sh foo bar"
+                 , App "echo2" "./test/fixtures/echo.sh baz 🙈"
                  ]
       (result,_) <- capture $ Houseman.start apps
       result `shouldContain` "echo1: \ESC[0mfoo"
@@ -38,7 +38,7 @@ spec = describe "Houseman" $ do
   describe "runApp" $ do
     it "should run given process" $ do
       log' <- newLogger
-      _ <- capture . waitForStreamingProcess =<< Houseman.runApp log' (App "echo" "./test/fixtures/echo.sh" ["foo", "🙈"] [("ECHO", "1")])
+      _ <- capture . waitForStreamingProcess =<< Houseman.runApp log' (App "echo" "ECHO=1 ./test/fixtures/echo.sh foo 🙈")
       readLogger log' `shouldReturn` Log ("echo", "ECHO=1")
       readLogger log' `shouldReturn` Log ("echo", "foo")
       readLogger log' `shouldReturn` Log ("echo", "🙈")
@@ -47,5 +47,5 @@ spec = describe "Houseman" $ do
       setEnv "BAZ" "3"
       writeFile ".env" "BAZ=2"
       log' <- newLogger
-      _ <- capture . waitForStreamingProcess =<< Houseman.runApp log' (App "echo" "printenv" ["BAZ"] [])
+      _ <- capture . waitForStreamingProcess =<< Houseman.runApp log' (App "echo" "printenv BAZ")
       readLogger log' `shouldReturn` Log ("echo", "2")
