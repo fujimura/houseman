@@ -17,7 +17,7 @@ import           System.Process hiding (runProcess)
 import qualified Configuration.Dotenv   as Dotenv
 import           Data.Streaming.Process (StreamingProcessHandle)
 
-import           Houseman.Internal      (bracketOnErrorMany,
+import           Houseman.Internal      (bracketMany,
                                          runProcess,
                                          terminateAndWaitForProcess,
                                          withAllExit, withAnyExit)
@@ -39,7 +39,7 @@ start apps = do
     logger <- newLogger
 
     -- Run apps
-    bracketOnErrorMany (map (runApp logger) apps) terminateAndWaitForProcess $ \phs -> do
+    bracketMany (map (runApp logger) apps) terminateAndWaitForProcess $ \phs -> do
       -- Get a MVar to detect termination of a process
       readyToTerminate <- newEmptyMVar
 
