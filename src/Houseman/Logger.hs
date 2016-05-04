@@ -78,5 +78,8 @@ installLogger name (Logger logger _) handle = go
 
 stopLogger :: Logger -> IO ()
 stopLogger (Logger logger stop) = do
+    -- Wait a while to flush logs
+    -- FIXME This won't guarantee all logs will be flushed out.
+    threadDelay 1000
     writeChan logger LogStop
     takeMVar stop
