@@ -11,21 +11,18 @@ module Houseman.Logger
   ) where
 
 import           Control.Concurrent
-import           Control.Exception        (onException)
-import           Control.Monad
 import           Data.Char
 import           Data.Monoid
 import           Data.Text                (Text)
 import           Data.Time
-import           GHC.IO.Exception
 import           GHC.IO.Handle
-import           System.IO.Error
 
 import qualified Data.ByteString          as ByteString
 import qualified Data.Text                as Text
 import qualified Data.Text.Encoding       as Text
 import qualified Data.Text.Encoding.Error as Text
 import qualified Data.Text.IO             as Text
+import qualified System.IO.Streams        as Streams
 
 import           Houseman.Types
 
@@ -64,17 +61,15 @@ runLogger (Logger logger done) = do
     colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
 installLogger :: String -> Logger -> Handle -> IO ()
-installLogger name (Logger logger _) handle = go
+installLogger name (Logger logger _) handle = do
+    is <- Streams.handleToInputStream handle >>=
+      Streams.lines >>=
+      Streams.map (Text.decodeUtf8With Text.lenientDecode . ByteString.filter (/= fromIntegral (ord '\r')))
+    os <- Streams.makeOutputStream out
+    Streams.connect is os
   where
-    go = do
-      c <- (||) <$> hIsClosed handle <*> hIsEOF' handle
-      unless c $ do
-        l <- Text.decodeUtf8With Text.lenientDecode . ByteString.filter (/= fromIntegral (ord '\r'))
-             <$> ByteString.hGetLine handle
-        writeChan logger (Log (name,l))
-        go
-    hIsEOF' h = hIsEOF h `catchIOError`
-                  (\e -> if ioeGetErrorType e == HardwareFault then return True else ioError e)
+    out (Just l) = writeChan logger (Log (name,l))
+    out Nothing  = return ()
 
 stopLogger :: Logger -> IO ()
 stopLogger (Logger logger stop) = do

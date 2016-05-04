@@ -36,6 +36,7 @@ library
     , directory
     , streaming-commons
     , mtl
+    , io-streams
   exposed-modules:
       Houseman
       Houseman.Internal
@@ -64,6 +65,7 @@ executable houseman
     , directory
     , streaming-commons
     , mtl
+    , io-streams
     , houseman
   default-language: Haskell2010
 
@@ -88,6 +90,7 @@ test-suite spec
     , directory
     , streaming-commons
     , mtl
+    , io-streams
     , hspec == 2.*
     , temporary
     , silently

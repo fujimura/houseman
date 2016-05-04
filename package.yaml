@@ -22,6 +22,7 @@ dependencies:
   - directory
   - streaming-commons
   - mtl
+  - io-streams
 
 library:
   source-dirs: src
