@@ -1,10 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.9.0.
+-- This file has been generated from package.yaml by hpack version 0.13.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:                houseman
 version:             0.0.1
-synopsis:            TBD
+synopsis:            A Haskell implementation of Foreman
 homepage:            https://github.com/fujimura/houseman#readme
 bug-reports:         https://github.com/fujimura/houseman/issues
 license:             MIT
