@@ -3,9 +3,7 @@
 
 module HousemanSpec ( main, spec ) where
 
-import           Control.Concurrent
 import           System.Environment
-import           System.Process
 
 import           Data.Streaming.Process (StreamingProcessHandle,
                                          waitForStreamingProcess)
