@@ -26,15 +26,19 @@ import qualified System.IO.Streams        as Streams
 
 import           Houseman.Types
 
+-- | Instantiates new 'Logger'.
 newLogger :: IO Logger
 newLogger = do
     c <- newChan
     m <- newEmptyMVar
     return $ Logger c m
 
+-- | Reads one `Log` from given `Logger`.
 readLogger :: Logger -> IO Log
 readLogger (Logger logger _) = readChan logger
 
+-- | Runs given `Logger`. Logs will be output to `System.IO.stdout`. When `Logger` gets
+-- `LogStop`, logging will be stopped.
 runLogger :: Logger -> IO ()
 runLogger (Logger logger done) = do
     _ <- forkIO $ go []
@@ -60,7 +64,12 @@ runLogger (Logger logger done) = do
     colorString :: Color -> Text -> Text
     colorString c x = "\x1b[" <> Text.pack (show c) <> "m" <> x <> "\x1b[0m"
 
-installLogger :: String -> Logger -> Handle -> IO ()
+-- | Installs new `Handle` as a source of given `Logger`.
+installLogger
+  :: String -- ^ Name of source
+  -> Logger -- ^ `Logger` instance
+  -> Handle -- ^ The source
+  -> IO ()
 installLogger name (Logger logger _) handle = do
     is <- Streams.handleToInputStream handle >>=
       Streams.lines >>=
@@ -71,6 +80,7 @@ installLogger name (Logger logger _) handle = do
     out (Just l) = writeChan logger (Log (name,l))
     out Nothing  = return ()
 
+-- | Stops `Logger`.
 stopLogger :: Logger -> IO ()
 stopLogger (Logger logger stop) = do
     -- Wait a while to flush logs

@@ -25,12 +25,14 @@ import           Houseman.Logger        (installLogger, newLogger, runLogger,
 import           Houseman.Types
 import           Procfile.Types
 
+-- | Runs `App` in `Procfile` with given name.
 run :: String -> Procfile -> IO ExitCode
 run cmd' apps = case find (\App{cmd} -> cmd == cmd') apps of
                   Just app -> Houseman.start [app] -- TODO Remove color in run command
                   Nothing   -> die ("Command '" ++ cmd' ++ "' not found in Procfile")
 
-start :: [App] -> IO ExitCode
+-- | Starts all `App`s in given `Procfile`.
+start :: Procfile -> IO ExitCode
 start apps = do
     print apps
 
@@ -65,7 +67,8 @@ start apps = do
         putStrLn "bye"
         return ExitSuccess
 
--- Run given app with given logger.
+-- | Runs given `App` with given `Logger`, invokes action with the process
+-- handle of the `App`, and returns result of the action.
 withApp :: Logger -> App -> (StreamingProcessHandle -> IO a) -> IO a
 withApp logger App {name,cmd} action = do
     -- Build environment variables to run app.

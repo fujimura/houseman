@@ -24,7 +24,13 @@ import           Data.Streaming.Process (Inherited (..), StreamingProcessHandle,
                                          streamingProcessHandleRaw,
                                          waitForStreamingProcess)
 
-withAnyExit :: (ExitCode -> Bool) -> [StreamingProcessHandle] -> IO a -> IO a
+-- | Watch exit of given process handles, and if any of them exited and
+-- passed given predicate, runs action.
+withAnyExit
+  :: (ExitCode -> Bool) -- ^ Predicate
+  -> [StreamingProcessHandle] -- ^ Process handles to watch
+  -> IO a -- ^ Action to run
+  -> IO a
 withAnyExit predicate phs action = go
   where
     go = do
@@ -33,7 +39,13 @@ withAnyExit predicate phs action = go
         then action
         else threadDelay 1000 >> go
 
-withAllExit :: (ExitCode -> Bool) -> [StreamingProcessHandle] -> IO a -> IO a
+-- | Watch exit of given process handles, and if all of them exited and
+-- passed given predicate, runs action.
+withAllExit
+  :: (ExitCode -> Bool) -- ^ Predicate
+  -> [StreamingProcessHandle] -- ^ Process handles to watch
+  -> IO a -- ^ Action to run
+  -> IO a
 withAllExit predicate phs action = go
   where
     go = do
@@ -42,6 +54,7 @@ withAllExit predicate phs action = go
         then action
         else threadDelay 1000 >> go
 
+-- | Terminates and waits for given process.
 terminateAndWaitForProcess :: StreamingProcessHandle -> IO ExitCode
 terminateAndWaitForProcess ph = do
   let ph' = streamingProcessHandleRaw ph
@@ -52,7 +65,12 @@ terminateAndWaitForProcess ph = do
       terminateProcess ph'
       waitForStreamingProcess ph
 
-withProcess :: CreateProcess -> ((Handle, Handle, StreamingProcessHandle) -> IO a) -> IO a
+-- | Runs given process and invoke action with stdout, stderr, process handle from it.
+-- stdout and stderr will be closed after action.
+withProcess
+  :: CreateProcess -- ^ The process
+  -> ((Handle, Handle, StreamingProcessHandle) -> IO a) -- ^ Action takes stdout, stderr and process handle
+  -> IO a
 withProcess p action = bracket before restore action
   where
     before = do
