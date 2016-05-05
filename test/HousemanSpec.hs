@@ -55,3 +55,9 @@ spec = describe "Houseman" $ do
       Houseman.withApp log' (App "echo" "printenv BAZ") $ \ph -> do
         _ <- waitForStreamingProcess ph
         readLogger log' `shouldReturn` Log ("echo", "2")
+
+    it "should log stderr" $ do
+      log' <- newLogger
+      Houseman.withApp log' (App "echo" "echo ERROR 1>&2") $ \ph -> do
+        _ <- waitForStreamingProcess ph
+        readLogger log' `shouldReturn` Log ("echo", "ERROR")
