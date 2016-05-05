@@ -18,8 +18,7 @@ import           System.Process
 import qualified Configuration.Dotenv   as Dotenv
 import           Data.Streaming.Process (StreamingProcessHandle)
 
-import           Houseman.Internal      (bracketMany,
-                                         terminateAndWaitForProcess,
+import           Houseman.Internal      (terminateAndWaitForProcess,
                                          withAllExit, withAnyExit, withProcess)
 import           Houseman.Logger        (installLogger, newLogger, runLogger,
                                          stopLogger)

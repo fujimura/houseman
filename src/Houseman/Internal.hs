@@ -7,7 +7,6 @@ module Houseman.Internal
   , withAllExit
   , withAnyExit
   , withProcess
-  , bracketMany
   ) where
 
 import           Control.Concurrent
@@ -73,10 +72,3 @@ withProcess p action = bracket before restore action
     close x = do
       c <- hIsClosed x
       unless c $ hClose x
-
-bracketMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
-bracketMany = go []
-  where
-    go :: [a] -> [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
-    go cs []               _     thing = thing cs
-    go cs (before:befores) after thing = bracket before after (\c -> go (c:cs) befores after thing)
