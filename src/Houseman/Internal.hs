@@ -6,7 +6,7 @@ module Houseman.Internal
   ( terminateAndWaitForProcess
   , withAllExit
   , withAnyExit
-  , runInPseudoTerminal
+  , runProcess
   , bracketOnErrorMany
   ) where
 
@@ -17,19 +17,13 @@ import           Data.Maybe
 import           GHC.IO.Exception
 import           GHC.IO.Handle
 import           System.IO
-import           System.Posix.Types
-import           System.Process
+import           System.Process         hiding (runProcess)
 
-import           Data.Streaming.Process (StreamingProcessHandle,
-                                         streamingProcess,
-                                         waitForStreamingProcess,
+import           Data.Streaming.Process (Inherited (..), StreamingProcessHandle,
                                          getStreamingProcessExitCode,
-                                         UseProvidedHandle(..),
-                                         streamingProcessHandleRaw)
-
-import qualified System.Posix.IO        as IO
-import qualified System.Posix.Terminal  as Terminal
-
+                                         streamingProcess,
+                                         streamingProcessHandleRaw,
+                                         waitForStreamingProcess)
 
 withAnyExit :: (ExitCode -> Bool) -> [StreamingProcessHandle] -> IO a -> IO a
 withAnyExit predicate phs action = go
@@ -59,25 +53,19 @@ terminateAndWaitForProcess ph = do
       terminateProcess ph'
       waitForStreamingProcess ph
 
-fdsToHandles :: (Fd, Fd) -> IO (Handle, Handle)
-fdsToHandles (x, y) = (,) <$> IO.fdToHandle x <*> IO.fdToHandle y
-
-runInPseudoTerminal :: CreateProcess -> IO (Handle, Handle, StreamingProcessHandle)
-runInPseudoTerminal p = do
-    -- TODO handle leaks possibility
-    (read',write) <- fdsToHandles =<< IO.createPipe
-    (master,slave) <- fdsToHandles =<< Terminal.openPseudoTerminal
+runProcess :: CreateProcess -> IO (Handle, Handle, StreamingProcessHandle)
+runProcess p = do
+    (Inherited, out :: Handle, err :: Handle, ph) <-
+      streamingProcess p { std_out = CreatePipe
+                         , std_err = CreatePipe
+                         }
     encoding <- mkTextEncoding "utf8"
-    forM_ [read',write,master,slave,stdout] $ \h -> do
+    forM_ [out,err] $ \h -> do
       hSetBuffering h NoBuffering
       hSetEncoding h encoding
-    hSetNewlineMode master universalNewlineMode
-    (UseProvidedHandle, UseProvidedHandle, UseProvidedHandle, ph) <-
-      streamingProcess p { std_in = UseHandle read'
-                         , std_out = UseHandle slave
-                         , std_err = UseHandle slave
-                         }
-    return (master, write, ph)
+      hSetNewlineMode h universalNewlineMode
+
+    return (out,err,ph)
 
 bracketOnErrorMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
 bracketOnErrorMany = go []

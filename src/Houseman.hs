@@ -12,13 +12,13 @@ import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.Posix.Signals
-import           System.Process
+import           System.Process hiding (runProcess)
 
 import qualified Configuration.Dotenv   as Dotenv
 import           Data.Streaming.Process (StreamingProcessHandle)
 
 import           Houseman.Internal      (bracketOnErrorMany,
-                                         runInPseudoTerminal,
+                                         runProcess,
                                          terminateAndWaitForProcess,
                                          withAllExit, withAnyExit)
 import           Houseman.Logger        (installLogger, newLogger, runLogger,
@@ -70,8 +70,8 @@ runApp logger App {name,cmd} =  do
     -- Build environment variables to run app.
     -- .env supersedes environment from current process.
     envs <- nubBy ((==) `on` fst)  . mconcat <$> sequence [getEnvsInDotEnvFile, getEnvironment]
-    (master, _, ph) <- runInPseudoTerminal (shell cmd) { env = Just envs }
-    forkIO $ installLogger name logger master
+    (out,err,ph) <- runProcess (shell cmd) { env = Just envs }
+    _ <- forkIO $ forM_ [out,err] (installLogger name logger)
     return ph
   where
     getEnvsInDotEnvFile :: IO [Env]
