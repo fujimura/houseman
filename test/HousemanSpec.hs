@@ -7,7 +7,8 @@ import           Control.Concurrent
 import           System.Environment
 import           System.Process
 
-import           Data.Streaming.Process (waitForStreamingProcess)
+import           Data.Streaming.Process (StreamingProcessHandle,
+                                         waitForStreamingProcess)
 
 import qualified Houseman
 import           Houseman.Logger        (newLogger, readLogger)
@@ -21,6 +22,9 @@ import           Test.Mockery.Directory (inTempDirectory)
 
 main :: IO ()
 main = hspec spec
+
+runApp :: Logger -> App -> IO StreamingProcessHandle
+runApp l a = Houseman.withApp l a return
 
 spec :: Spec
 spec = describe "Houseman" $ do
@@ -38,14 +42,16 @@ spec = describe "Houseman" $ do
   describe "runApp" $ do
     it "should run given process" $ do
       log' <- newLogger
-      _ <- capture . waitForStreamingProcess =<< Houseman.runApp log' (App "echo" "ECHO=1 ./test/fixtures/echo.sh foo 🙈")
-      readLogger log' `shouldReturn` Log ("echo", "ECHO=1")
-      readLogger log' `shouldReturn` Log ("echo", "foo")
-      readLogger log' `shouldReturn` Log ("echo", "🙈")
+      Houseman.withApp log' (App "echo" "ECHO=1 ./test/fixtures/echo.sh foo 🙈") $ \ph -> do
+        _ <- waitForStreamingProcess ph
+        readLogger log' `shouldReturn` Log ("echo", "ECHO=1")
+        readLogger log' `shouldReturn` Log ("echo", "foo")
+        readLogger log' `shouldReturn` Log ("echo", "🙈")
 
     it "should use .env as dotenv file, which supersedes original environment" $ inTempDirectory $ do
       setEnv "BAZ" "3"
       writeFile ".env" "BAZ=2"
       log' <- newLogger
-      _ <- capture . waitForStreamingProcess =<< Houseman.runApp log' (App "echo" "printenv BAZ")
-      readLogger log' `shouldReturn` Log ("echo", "2")
+      Houseman.withApp log' (App "echo" "printenv BAZ") $ \ph -> do
+        _ <- waitForStreamingProcess ph
+        readLogger log' `shouldReturn` Log ("echo", "2")

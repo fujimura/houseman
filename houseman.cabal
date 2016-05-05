@@ -35,6 +35,7 @@ library
     , dotenv
     , directory
     , streaming-commons
+    , mtl
   exposed-modules:
       Houseman
       Houseman.Internal
@@ -62,6 +63,7 @@ executable houseman
     , dotenv
     , directory
     , streaming-commons
+    , mtl
     , houseman
   default-language: Haskell2010
 
@@ -85,6 +87,7 @@ test-suite spec
     , dotenv
     , directory
     , streaming-commons
+    , mtl
     , hspec == 2.*
     , temporary
     , silently

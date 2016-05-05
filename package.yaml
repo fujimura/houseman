@@ -21,6 +21,7 @@ dependencies:
   - dotenv
   - directory
   - streaming-commons
+  - mtl
 
 library:
   source-dirs: src

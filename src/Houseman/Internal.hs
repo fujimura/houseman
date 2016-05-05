@@ -6,7 +6,7 @@ module Houseman.Internal
   ( terminateAndWaitForProcess
   , withAllExit
   , withAnyExit
-  , runProcess
+  , withProcess
   , bracketMany
   ) where
 
@@ -17,7 +17,7 @@ import           Data.Maybe
 import           GHC.IO.Exception
 import           GHC.IO.Handle
 import           System.IO
-import           System.Process         hiding (runProcess)
+import           System.Process
 
 import           Data.Streaming.Process (Inherited (..), StreamingProcessHandle,
                                          getStreamingProcessExitCode,
@@ -53,19 +53,26 @@ terminateAndWaitForProcess ph = do
       terminateProcess ph'
       waitForStreamingProcess ph
 
-runProcess :: CreateProcess -> IO (Handle, Handle, StreamingProcessHandle)
-runProcess p = do
-    (Inherited, out :: Handle, err :: Handle, ph) <-
-      streamingProcess p { std_out = CreatePipe
-                         , std_err = CreatePipe
-                         }
-    encoding <- mkTextEncoding "utf8"
-    forM_ [out,err] $ \h -> do
-      hSetBuffering h NoBuffering
-      hSetEncoding h encoding
-      hSetNewlineMode h universalNewlineMode
-
-    return (out,err,ph)
+withProcess :: CreateProcess -> ((Handle, Handle, StreamingProcessHandle) -> IO a) -> IO a
+withProcess p action = bracket before restore action
+  where
+    before = do
+      (Inherited, out :: Handle, err :: Handle, ph) <-
+        streamingProcess p { std_out = CreatePipe
+                           , std_err = CreatePipe
+                           }
+      encoding <- mkTextEncoding "utf8"
+      forM_ [out,err] $ \h -> do
+        hSetBuffering h NoBuffering
+        hSetEncoding h encoding
+        hSetNewlineMode h universalNewlineMode
+      return (out,err,ph)
+    restore (out,err,_) = do
+      close out
+      close err
+    close x = do
+      c <- hIsClosed x
+      unless c $ hClose x
 
 bracketMany :: [IO a] -> (a -> IO b) -> ([a] -> IO c) -> IO c
 bracketMany = go []
