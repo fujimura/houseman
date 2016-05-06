@@ -31,7 +31,7 @@ library
     , trifecta
     , parsers
     , time
-    , optparse-generic
+    , optparse-generic >= 1.1.0
     , dotenv
     , directory
     , streaming-commons
@@ -60,7 +60,7 @@ executable houseman
     , trifecta
     , parsers
     , time
-    , optparse-generic
+    , optparse-generic >= 1.1.0
     , dotenv
     , directory
     , streaming-commons
@@ -85,7 +85,7 @@ test-suite spec
     , trifecta
     , parsers
     , time
-    , optparse-generic
+    , optparse-generic >= 1.1.0
     , dotenv
     , directory
     , streaming-commons

@@ -17,7 +17,7 @@ dependencies:
   - trifecta
   - parsers
   - time
-  - optparse-generic
+  - optparse-generic >= 1.1.0
   - dotenv
   - directory
   - streaming-commons
