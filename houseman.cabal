@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:                houseman
-version:             0.0.1
+version:             0.1.0
 synopsis:            A Haskell implementation of Foreman
 homepage:            https://github.com/fujimura/houseman#readme
 bug-reports:         https://github.com/fujimura/houseman/issues

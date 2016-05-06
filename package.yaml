@@ -1,5 +1,5 @@
 name: houseman
-version: 0.0.1
+version: 0.1.0
 synopsis: A Haskell implementation of Foreman
 maintainer: Daisuke Fujimura <me@fujmuradaisuke.com>
 license: MIT
