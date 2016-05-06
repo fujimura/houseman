@@ -1,7 +1,9 @@
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module Main where
 
@@ -16,8 +18,10 @@ import qualified Paths_houseman
 import qualified Procfile.Parse
 import           Procfile.Types
 
-data Option = Start { filename :: Maybe FilePath } |
-              Run   { command :: String, filename :: Maybe FilePath } |
+data Option = Start { filename :: Maybe FilePath <?> "Path of Procfile" } |
+              Run   { command :: String <?> "Command to run"
+                    , filename :: Maybe FilePath <?> "Path of Procfile"
+                    } |
               Version
               deriving (Generic, Show)
 
@@ -27,8 +31,10 @@ main :: IO ()
 main = do
     (opts :: Option) <- getRecord "Manage Procfile-based application"
     case opts of
-      Start _       -> parseProcFile (fromMaybe "Procfile" $ filename opts) >>= Houseman.start >>= exitWith
-      Run {command} -> parseProcFile (fromMaybe "Procfile" $ filename opts) >>= Houseman.run command >>= exitWith
+      Start {filename}       -> parseProcFile (fromMaybe "Procfile" (unHelpful filename))
+                                  >>= Houseman.start >>= exitWith
+      Run {filename,command} -> parseProcFile (fromMaybe "Procfile" (unHelpful filename))
+                                  >>= Houseman.run (unHelpful command) >>= exitWith
       Version       -> putStrLn (showVersion Paths_houseman.version)
 
 parseProcFile :: FilePath -> IO Procfile
