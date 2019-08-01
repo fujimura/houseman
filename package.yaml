@@ -9,7 +9,7 @@ category: Development
 ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
 
 dependencies:
-  - base >= 4.7 && < 5
+  - base
   - bytestring
   - text
   - unix
@@ -17,12 +17,13 @@ dependencies:
   - trifecta
   - parsers
   - time
-  - optparse-generic >= 1.1.0
+  - optparse-generic
   - dotenv
   - directory
   - streaming-commons
   - mtl
   - io-streams
+  - tagged
 
 library:
   source-dirs: src
@@ -44,6 +45,6 @@ tests:
       - hspec == 2.*
       - temporary
       - silently
-      - mockery >= 0.3
+      - mockery
       - interpolate
       - QuickCheck

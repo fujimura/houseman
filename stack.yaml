@@ -1,16 +1,17 @@
 # For more information, see: https://github.com/commercialhaskell/stack/blob/release/doc/yaml_configuration.md
 
 # Specifies the GHC version and set of packages available (e.g., lts-3.5, nightly-2015-09-21, ghc-7.10.2)
-resolver: lts-5.15
+resolver: lts-13.30
 
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps:
-  - optparse-generic-1.1.0
-  - dotenv-0.3.0.1
+
+# extra-deps:
+#   - optparse-generic-1.3.0@sha256:9a86164276f1d7eda9f3e3d115093b9e9c969f2a4d3cee93e1c283f300feb3d1
+  # - dotenv-0.3.0.1
 
 # Override default flag values for local packages and extra-deps
 flags: {}
@@ -32,3 +33,7 @@ extra-package-dbs: []
 # Extra directories used by stack for building
 # extra-include-dirs: [/path/to/dir]
 # extra-lib-dirs: [/path/to/dir]
+
+nix:
+  enable: true
+  shell-file: shell.nix
