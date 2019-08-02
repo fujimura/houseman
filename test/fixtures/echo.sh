@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
 echo "ECHO=${ECHO}"
 for var in "$@"
