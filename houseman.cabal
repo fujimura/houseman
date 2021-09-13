@@ -68,6 +68,7 @@ test-suite spec
     , mockery >=0.3
     , silently
     , temporary
+  build-tool-depends: hspec-discover:hspec-discover -any
   other-modules:
       HousemanSpec
       Procfile.ParseSpec
