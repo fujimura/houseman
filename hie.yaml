@@ -1,0 +1,16 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:houseman"
+
+    - path: "app/Main.hs"
+      component: "houseman:exe:houseman"
+
+    - path: "app/Paths_houseman.hs"
+      component: "houseman:exe:houseman"
+
+    - path: "test"
+      component: "houseman:test:spec"
+
+    - path: "src"
+      component: "houseman:test:spec"
