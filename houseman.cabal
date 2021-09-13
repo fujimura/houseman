@@ -50,8 +50,15 @@ library
 executable houseman
   import: shared
   main-is: Main.hs
-  hs-source-dirs: app
+  hs-source-dirs: app src
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  other-modules:
+      Houseman
+      Houseman.Internal
+      Houseman.Logger
+      Houseman.Types
+      Procfile.Parse
+      Procfile.Types
 
 test-suite spec
   import: shared
